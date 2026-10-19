@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: kanabaa-threads
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: THREADS_ACCESS_TOKEN
+        sync: false
+      - key: THREADS_APP_ID
+        sync: false
+      - key: THREADS_APP_SECRET
+        sync: false
+      - key: IMG_BASE
+        value: https://raw.githubusercontent.com/MURAMI555/kanabaa-threads/main/img
+      - key: PYTHON_VERSION
+        value: 3.12.7
