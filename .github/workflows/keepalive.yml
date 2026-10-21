@@ -1,0 +1,12 @@
+# Render の無料サーバーは15分アクセスが無いと眠る。眠ると予定の投稿が出ないので、10分おきに起こす。
+name: keepalive
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: curl -fsS --max-time 90 https://kanabaa-threads.onrender.com/health
