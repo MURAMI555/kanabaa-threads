@@ -9,6 +9,21 @@
 - 長期トークン（60日）は毎週月曜に自動更新。`RENDER_API_KEY` と `RENDER_SERVICE_ID` があれば Render の環境変数も書き換える
 - `/health` 生存確認（UptimeRobot 用）／`/status` 予定と結果／`/check` 接続確認（投稿しない）／`/oauth/start` トークン取得
 
+## キャラを増やすとき（2026/10/22・澪 mio／紬 tsumugi／鈴 rin／律 ritsu）
+
+同じ Meta アプリ・同じ Render で、アカウントごとにトークンを分けて投稿する。予定表のキーは `mio@2026-10-27 08:00` のように「キャラ名@日時」（叶ばぁは今までどおり日時だけ）。トークンが入っていないキャラの枠は飛ばすので、先に予定表を入れておいても害はない。
+
+1. そのキャラの Threads アカウントを作って、PC の Chrome でそのアカウントにログインしておく
+2. Meta の開発者アプリ `kanabaa threads` →「アプリの役割」→「人を追加」→ **Threads テスター**にそのアカウント（例 mio_suuhi）を追加 → スマホの Threads アプリ（そのアカウント）→ 設定 → アカウント → ウェブサイトのアクセス許可 → 承認
+3. トークンを取る（どちらか）
+   - A：Meta の「ユーザートークン生成ツール」（叶ばぁのときと同じ）でそのアカウントのトークンを作る
+   - B：`https://kanabaa-threads.onrender.com/oauth/start?account=mio` を開いて「許可」（App Secret が Render に入っているとき）
+4. Render の環境変数に貼る：**`THREADS_ACCESS_TOKEN_MIO`**（紬は `_TSUMUGI`、鈴は `_RIN`、律は `_RITSU`）。保存すると再デプロイ
+5. `https://kanabaa-threads.onrender.com/check?account=mio` で `username` がそのアカウントなら接続OK。`/status` の `accounts` で全部の状態が見える
+6. 週1の自動更新は全アカウント分まわる（`RENDER_API_KEY` があれば `THREADS_ACCESS_TOKEN_MIO` も書き換える）
+
+専用ページは `docs/<キャラ名>/index.html`（`https://murami555.github.io/kanabaa-threads/mio/` など）。LINE の友だち追加URLが決まったら各ページの `LINE_URL` に入れて push。
+
 ## 最初の設定（みかちゃんの手でやる。順番どおり）
 
 ### 1. GitHub にリポジトリを作る（公開）
