@@ -3,3 +3,4 @@ gunicorn
 apscheduler
 pytz
 requests
+anthropic==2.2.0

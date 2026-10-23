@@ -2,12 +2,32 @@
 
 叶ばぁ（Threads @kanabaa.yoru）の投稿を、Render 上の小さなアプリから Threads 公式API で予定どおり自動で出す。
 予定表は `schedule.py`（日本時間・1枠＝本体＋返信でつなぐ 1/3・2/3・3/3）。線画は `img/`（GitHub の raw URL で Threads に渡す）。
-返信・DM は本部ルールどおり自動化しない（人が返す）。
+返信・DM は本部ルールどおり自動で送らない（人が返す）。2026/10/23 から**下書きだけ**自動で作る受付箱あり（下の「受付箱」）。
 
 - 5分おきに予定表を見て、時間が来た枠を投稿（30分以内の遅れなら出す）
 - 二重投稿防止：投稿済みの記憶 ＋ Threads 上の直近投稿と本文の先頭を照合
 - 長期トークン（60日）は毎週月曜に自動更新。`RENDER_API_KEY` と `RENDER_SERVICE_ID` があれば Render の環境変数も書き換える
 - `/health` 生存確認（UptimeRobot 用）／`/status` 予定と結果／`/check` 接続確認（投稿しない）／`/oauth/start` トークン取得
+
+## 受付箱（2026/10/23・下書きだけ自動。送るのはみかちゃん）
+
+コードは `inbox_kit/`。このアプリからは Threads にも LINE にも**何も送らない**（本部⑥「自動返信ツールは使わない」。1タップ送信は本部の答えが来てから）。
+
+- **Threads**：15分おきに、直近10日の叶ばぁの投稿についたコメントを読む。生年月日があれば Claude（claude-opus-5-5）が返信の下書きを作る。叶ばぁが返信したコメントは自動で「送った」。「死にたい」などは占わず窓口の文
+- **LINE（@492vxwcy）**：Messaging API の Webhook `/line/webhook` で届いたメッセージを貯め、最後のメッセージから10分たったら初視（無料鑑定）の下書き。霊視メモを書いて「作り直す」と、メモを芯に書き直す。初視を「送った」あとに「本鑑定」と来たら、本鑑定の案内文（`SQUARE_URL`）
+- **画面**：`https://kanabaa-threads.onrender.com/inbox?pin=合言葉`（1回開けば180日そのスマホで入れる）。コピー → Threads／LINEのアプリで貼って送る →「送った」
+- お客様のメッセージと下書きはスプレッドシート（`gas/kanabaa_inbox.gs`）に置く。Render は再起動で中身が消えるため
+- 下書きは叶ばぁの禁止語チェック（`inbox_kit/kinshi.py`）を通し、引っかかったら1回直させる。残ったら画面に赤字
+- Threads の返信の最後の1行は、2026/10/25 から「プロフィールのリンクから婆さんのLINEへ」（それまでは「インスタのDMへ」）
+
+### 受付箱の設定（みかちゃんの手）
+
+合言葉2つ（`INBOX_PIN`・`INBOX_STORE_KEY`）は PC の `~/.claude/secrets/kanabaa-inbox.env` にある（公開リポには書かない）。
+
+1. **置き場のシート**：新しいスプレッドシート「叶ばぁ_受付箱」→ 拡張機能 → Apps Script → `gas/kanabaa_inbox.gs` を貼り、`KEY` を `INBOX_STORE_KEY` の値に → デプロイ → 新しいデプロイ → ウェブアプリ・実行ユーザー「自分」・アクセス「全員」→ 許可 → 出た `/exec` のURLを控える
+2. **LINE の Messaging API**：LINE公式アカウントの管理画面（叶ばぁ）→ 設定 → Messaging API →「Messaging APIを利用する」→ プロバイダー「叶ばぁ」→ チャネルシークレットを控える。LINE Developers のそのチャネル → Messaging API設定 → チャネルアクセストークン（長期）を発行 → Webhook URL に `https://kanabaa-threads.onrender.com/line/webhook` →「Webhookの利用」オン。応答設定は**チャットはオンのまま**（手で返すため）・応答メッセージはオフのまま。※Messaging API は一度オンにすると戻せない
+3. **Render の環境変数**（kanabaa-threads）に入れる：`INBOX_PIN`・`INBOX_STORE_KEY`・`INBOX_STORE_URL`（1のURL）・`LINE_CHANNEL_SECRET`・`LINE_CHANNEL_ACCESS_TOKEN`・`ANTHROPIC_API_KEY`（nurikae-linebot に入っているものと同じでよい）・（あれば）`SQUARE_URL`
+4. `/inbox?pin=…` を開く →「今すぐ読み込む」。`/inbox/log` で設定の有無が見える
 
 ## キャラを増やすとき（2026/10/22・澪 mio／紬 tsumugi／鈴 rin／律 ritsu）
 

@@ -91,6 +91,15 @@ def my_posts(limit: int = 25, account: str = DEFAULT) -> list:
     return r.json().get("data", [])
 
 
+def conversation(media_id: str, account: str = DEFAULT) -> list:
+    """投稿についた返信ぜんぶ（ツリーの下まで）。受付箱が生年月日コメントを拾うのに使う。読むだけ"""
+    r = requests.get(f"{BASE}/{media_id}/conversation", params={
+        "fields": "id,text,username,timestamp,permalink,replied_to,is_reply_owned_by_me,hide_status",
+        "reverse": "false", "limit": 100, "access_token": token(account)}, timeout=30)
+    r.raise_for_status()
+    return r.json().get("data", [])
+
+
 def publishing_limit(account: str = DEFAULT) -> dict:
     r = requests.get(f"{BASE}/{user_id(account)}/threads_publishing_limit",
                      params={"fields": "quota_usage,config", "access_token": token(account)}, timeout=30)

@@ -17,12 +17,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, jsonify, redirect, request
 
 import threads_api
+from inbox_kit import routes as inbox
 from schedule import POSTS
 
 JST = pytz.timezone("Asia/Tokyo")
 LATE_LIMIT = timedelta(minutes=30)
 IMG_BASE = os.environ.get("IMG_BASE", "").rstrip("/")  # 例: https://raw.githubusercontent.com/MURAMI555/kanabaa-threads/main/img
 app = Flask(__name__)
+app.register_blueprint(inbox.bp)  # 受付箱 /inbox・LINE Webhook /line/webhook（下書きだけ。送らない）
 _lock = threading.Lock()
 _done: dict = {}      # slot -> {"status","account","ids","error","at"}
 _log: list = []
@@ -175,6 +177,7 @@ if os.environ.get("DISABLE_SCHEDULER") != "1":
     _sched = BackgroundScheduler(timezone=JST)
     _sched.add_job(post_due, "interval", minutes=5, id="post_due")
     _sched.add_job(refresh_weekly, "cron", day_of_week="mon", hour=4, minute=0, id="refresh")
+    _sched.add_job(inbox.job, "interval", minutes=15, id="inbox", max_instances=1)
     _sched.start()
     _note("scheduler started")
 
