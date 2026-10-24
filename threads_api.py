@@ -2,7 +2,7 @@
 投稿は2段階：コンテナ作成 → 公開。画像は公開URL（GitHubのraw）を渡す。返信は reply_to_id。
 トークンは60日で切れる。週1で更新し、RENDER_API_KEY があれば Render の環境変数も書き換える。
 
-2026/10/22 複数アカウント対応：account は "kanabaa"（既定・叶ばぁ）か、"mio"（澪）"tsumugi"（紬）"rin"（鈴）"ritsu"（律）。
+2026/10/22 複数アカウント対応：account は "kanabaa"（既定・叶ばぁ）か、"mio"（澪）"tsumugi"（紬）"rin"（鈴）"ritsu"（律・10/24 麗子と入れ替えで開設しない）"reiko"（麗子）。
   既定の環境変数   THREADS_ACCESS_TOKEN / THREADS_USER_ID
   ほかのアカウント THREADS_ACCESS_TOKEN_MIO / THREADS_USER_ID_MIO のように、キーを大文字にして後ろに付ける"""
 import os
@@ -12,7 +12,7 @@ import requests
 
 BASE = "https://graph.threads.net/v1.0"
 DEFAULT = "kanabaa"
-ACCOUNTS = ["kanabaa", "mio", "tsumugi", "rin", "ritsu"]
+ACCOUNTS = ["kanabaa", "mio", "tsumugi", "rin", "ritsu", "reiko"]
 _mem_token: dict = {}  # account -> 更新後のトークン（プロセスが生きている間だけ）
 
 

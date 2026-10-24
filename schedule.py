@@ -4,7 +4,7 @@
 # 2026/10/21：10/21〜10/27 の分は Threads の予約投稿に入っているので書かない（二重投稿防止）。ここは 10/28 8:00 以降だけ。
 # 元の文面は MIKA-AI/ai-team/uranai-consult/N週目の投稿.md（みかちゃんOK済み）。予約ツール/slots.py で作る。
 # 2026/10/22 複数アカウント：キーを "mio@2026-10-27 08:00" のように「キャラ名@日時」にすると、そのキャラのトークンで投稿する
-#   （mio＝澪・tsumugi＝紬・rin＝鈴・ritsu＝律。キャラ名が無ければ叶ばぁ）。トークン未設定のキャラの枠は飛ばす。
+#   （mio＝澪・tsumugi＝紬・rin＝鈴・reiko＝麗子（律と入れ替え）。キャラ名が無ければ叶ばぁ）。トークン未設定のキャラの枠は飛ばす。
 #   キャラの文面は MIKA-AI/ai-team/uranai-consult/キャラ/<名前>/1週目の投稿.md。
 
 POSTS = {
@@ -100,7 +100,7 @@ POSTS = {
 # キャラ4本の予定表を合流する（2026/10/22）。ファイルが無いキャラは飛ばす。
 # キーは "mio@…" のようにキャラ名つきなので叶ばぁの枠とぶつからない。トークン未設定のキャラは app.py が飛ばす。
 for _name, _var in (("schedule_mio", "POSTS_MIO"), ("schedule_tsumugi", "POSTS_TSUMUGI"),
-                    ("schedule_rin", "POSTS_RIN"), ("schedule_ritsu", "POSTS_RITSU")):
+                    ("schedule_rin", "POSTS_RIN"), ("schedule_reiko", "POSTS_REIKO")):  # 律(schedule_ritsu)は10/24 麗子と入れ替え
     try:
         POSTS.update(getattr(__import__(_name), _var))
     except ImportError:
