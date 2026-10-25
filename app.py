@@ -16,9 +16,11 @@ import pytz
 from apscheduler.schedulers.background import BackgroundScheduler
 from flask import Flask, jsonify, redirect, request
 
+import instagram_api
 import threads_api
 from inbox_kit import routes as inbox
 from schedule import POSTS
+from schedule_insta import INSTA_POSTS
 
 JST = pytz.timezone("Asia/Tokyo")
 LATE_LIMIT = timedelta(minutes=30)
@@ -172,11 +174,89 @@ def oauth_callback():
             f"<p>保存したら /check?account={account} で接続を確認。</p>")
 
 
+# ── インスタ（2026/10/25〜・鈴から）。予定表は schedule_insta.INSTA_POSTS、キーは "rin@YYYY-MM-DD HH:MM" ──
+_ig_done: dict = {}   # slot -> {"status","ids","error","at"}
+
+
+def _ig_already(caption: str, at: datetime, account: str) -> bool:
+    """同じキャプションの先頭が、その枠の前後12時間に投稿済みなら True"""
+    head = caption.strip().splitlines()[0][:20]
+    try:
+        for p in instagram_api.my_posts(account):
+            if not (p.get("caption") or "").strip().startswith(head):
+                continue
+            ts = datetime.strptime(p["timestamp"], "%Y-%m-%dT%H:%M:%S%z").astimezone(JST)
+            if abs(ts - at) < timedelta(hours=12):
+                return True
+    except Exception as e:  # noqa: BLE001
+        _note(f"[ig:{account}] 直近投稿の確認に失敗（続行）: {e}")
+    return False
+
+
+def ig_post_due():
+    now = datetime.now(JST)
+    with _lock:
+        for slot, item in sorted(INSTA_POSTS.items(), key=lambda kv: split_slot(kv[0])[1]):
+            account, _ = split_slot(slot)
+            at = slot_time(slot)
+            if not (at <= now < at + LATE_LIMIT) or slot in _ig_done:
+                continue
+            if not instagram_api.configured(account):
+                _ig_done[slot] = {"status": "skipped(no token)", "at": now.isoformat()}
+                _note(f"[ig:{account}] {slot} はトークン未設定なので飛ばした")
+                continue
+            if _ig_already(item["caption"], at, account):
+                _ig_done[slot] = {"status": "skipped(already)", "at": now.isoformat()}
+                _note(f"[ig:{account}] {slot} は投稿済みなので飛ばした")
+                continue
+            _ig_done[slot] = {"status": "posting", "at": now.isoformat()}
+            try:
+                urls = [f"{IMG_BASE}/{p}" for p in item["images"]]
+                pid = instagram_api.post(item["caption"], urls, account)
+                _ig_done[slot] = {"status": "posted", "ids": [pid], "at": now.isoformat()}
+                _note(f"[ig:{account}] {slot} 投稿した {pid}")
+            except Exception as e:  # noqa: BLE001
+                traceback.print_exc()
+                _ig_done[slot] = {"status": "error", "error": str(e)[:300], "at": now.isoformat()}
+                _note(f"[ig:{account}] {slot} 投稿に失敗: {e}")
+
+
+def ig_refresh_weekly():
+    for account in instagram_api.configured_accounts():
+        try:
+            new = instagram_api.refresh_token(account)
+            instagram_api.set_token(new, account)
+            saved = instagram_api.save_token_to_render(new, account)
+            _note(f"[ig:{account}] トークンを更新した" + ("（Renderの環境変数も更新）" if saved else "（メモリのみ。Renderの環境変数は手で更新が要る）"))
+        except Exception as e:  # noqa: BLE001
+            _note(f"[ig:{account}] トークン更新に失敗: {e}")
+
+
+@app.get("/ig/status")
+def ig_status():
+    now = datetime.now(JST)
+    upcoming = [s for s in sorted(INSTA_POSTS, key=lambda k: split_slot(k)[1]) if slot_time(s) >= now][:15]
+    return jsonify({"now": now.strftime("%Y-%m-%d %H:%M"),
+                    "accounts": {a: instagram_api.configured(a) for a in instagram_api.ACCOUNTS},
+                    "upcoming": upcoming, "done": _ig_done})
+
+
+@app.get("/ig/check")
+def ig_check():
+    account = request.args.get("account", "rin")
+    try:
+        return jsonify({"account": account, "me": instagram_api.me(account), "limit": instagram_api.publishing_limit(account)})
+    except Exception as e:  # noqa: BLE001
+        return jsonify({"account": account, "error": str(e)}), 500
+
+
 _sched = None
 if os.environ.get("DISABLE_SCHEDULER") != "1":
     _sched = BackgroundScheduler(timezone=JST)
     _sched.add_job(post_due, "interval", minutes=5, id="post_due")
+    _sched.add_job(ig_post_due, "interval", minutes=5, id="ig_post_due")
     _sched.add_job(refresh_weekly, "cron", day_of_week="mon", hour=4, minute=0, id="refresh")
+    _sched.add_job(ig_refresh_weekly, "cron", day_of_week="mon", hour=4, minute=10, id="ig_refresh")
     _sched.add_job(inbox.job, "interval", minutes=15, id="inbox", max_instances=1)
     _sched.start()
     _note("scheduler started")
