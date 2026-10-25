@@ -84,6 +84,18 @@ def post(caption: str, image_urls: list, account: str) -> str:
     return r.json()["id"]
 
 
+def post_reel(caption: str, video_url: str, account: str) -> str:
+    """リール（縦動画）を投稿して公開後のIDを返す。2026/10/25 麗子から。動画は公開URL（MP4）を渡す"""
+    if not configured(account):
+        raise RuntimeError(env_name(account) + " が未設定")
+    cid = _container(account, media_type="REELS", video_url=video_url, caption=caption, share_to_feed="true")
+    _wait_ready(cid, account, tries=60)  # 動画の処理は長い（最長およそ5分）
+    r = requests.post(f"{BASE}/me/media_publish", data={"creation_id": cid, "access_token": token(account)}, timeout=60)
+    if not r.ok:
+        raise RuntimeError(f"公開エラー {r.status_code}: {r.text[:300]}")
+    return r.json()["id"]
+
+
 def my_posts(account: str, limit: int = 10) -> list:
     """自分の最近の投稿（新しい順）。二重投稿の確認に使う"""
     r = requests.get(f"{BASE}/me/media", params={"fields": "id,caption,timestamp,permalink", "limit": limit,

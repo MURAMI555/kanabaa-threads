@@ -25,6 +25,7 @@ from schedule_insta import INSTA_POSTS
 JST = pytz.timezone("Asia/Tokyo")
 LATE_LIMIT = timedelta(minutes=30)
 IMG_BASE = os.environ.get("IMG_BASE", "").rstrip("/")  # 例: https://raw.githubusercontent.com/MURAMI555/kanabaa-threads/main/img
+REEL_BASE = os.environ.get("REEL_BASE", "https://murami555.github.io/kanabaa-threads/reels").rstrip("/")  # リールの動画（docs/reels/）。raw は octet-stream なので Pages を使う
 app = Flask(__name__)
 app.register_blueprint(inbox.bp)  # 受付箱 /inbox・LINE Webhook /line/webhook（下書きだけ。送らない）
 _lock = threading.Lock()
@@ -211,8 +212,11 @@ def ig_post_due():
                 continue
             _ig_done[slot] = {"status": "posting", "at": now.isoformat()}
             try:
-                urls = [f"{IMG_BASE}/{p}" for p in item["images"]]
-                pid = instagram_api.post(item["caption"], urls, account)
+                if item.get("video"):  # リール（2026/10/25 鈴・週4本）。動画は GitHub Pages（video/mp4 で配られる）から
+                    pid = instagram_api.post_reel(item["caption"], f"{REEL_BASE}/{item['video']}", account)
+                else:
+                    urls = [f"{IMG_BASE}/{p}" for p in item["images"]]
+                    pid = instagram_api.post(item["caption"], urls, account)
                 _ig_done[slot] = {"status": "posted", "ids": [pid], "at": now.isoformat()}
                 _note(f"[ig:{account}] {slot} 投稿した {pid}")
             except Exception as e:  # noqa: BLE001
