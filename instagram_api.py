@@ -10,7 +10,7 @@ import time
 import requests
 
 BASE = "https://graph.instagram.com/v21.0"
-ACCOUNTS = ["rin"]
+ACCOUNTS = ["rin", "reiko"]
 _mem_token: dict = {}  # account -> 更新後のトークン（プロセスが生きている間だけ）
 
 
