@@ -250,6 +250,38 @@ def ig_check():
         return jsonify({"account": account, "error": str(e)}), 500
 
 
+@app.get("/ig/stats")
+def ig_stats():
+    """投稿ごとの閲覧数（スマホで見る表）。/ig/stats?account=rin、?format=json でJSON"""
+    account = request.args.get("account", "rin")
+    try:
+        prof = instagram_api.profile(account)
+        rows = instagram_api.media_stats(account, int(request.args.get("limit", 20)))
+    except Exception as e:  # noqa: BLE001
+        return jsonify({"account": account, "error": str(e)}), 500
+    if request.args.get("format") == "json":
+        return jsonify({"account": account, "profile": prof, "posts": rows})
+    cols = [("views", "閲覧"), ("reach", "リーチ"), ("likes", "いいね"), ("comments", "コメ"), ("saved", "保存"), ("shares", "シェア")]
+    total = sum(r.get("views") or 0 for r in rows)
+    body = []
+    for r in rows:
+        ts = datetime.strptime(r["timestamp"], "%Y-%m-%dT%H:%M:%S%z").astimezone(JST).strftime("%m/%d %H:%M")
+        cells = "".join(f"<td>{'' if r.get(k) is None else r[k]}</td>" for k, _ in cols)
+        err = f"<div class=e>閲覧数が取れない：{html.escape(r['error'])}</div>" if r.get("error") else ""
+        body.append(f"<tr><td><a href='{html.escape(r.get('permalink') or '')}'>{ts}</a><br><small>{html.escape(r['caption'])}</small>{err}</td>{cells}</tr>")
+    head = "".join(f"<th>{n}</th>" for _, n in cols)
+    name = html.escape(prof.get("username", account))
+    return (f"<!doctype html><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+            f"<title>@{name} 閲覧数</title>"
+            "<style>body{font-family:sans-serif;margin:12px}table{border-collapse:collapse;width:100%;font-size:13px}"
+            "td,th{border-bottom:1px solid #ddd;padding:6px 4px;text-align:right}td:first-child,th:first-child{text-align:left}"
+            "small{color:#777}.e{color:#c00;font-size:11px}</style>"
+            f"<h3>@{name}</h3>"
+            f"<p>フォロワー {prof.get('followers_count', '-')}・投稿 {prof.get('media_count', '-')}・直近{len(rows)}本の閲覧合計 {total}"
+            f"<br><small>{datetime.now(JST).strftime('%Y-%m-%d %H:%M')} 時点</small></p>"
+            f"<table><tr><th>投稿</th>{head}</tr>{''.join(body)}</table>")
+
+
 _sched = None
 if os.environ.get("DISABLE_SCHEDULER") != "1":
     _sched = BackgroundScheduler(timezone=JST)

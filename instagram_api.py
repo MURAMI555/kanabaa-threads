@@ -92,6 +92,39 @@ def my_posts(account: str, limit: int = 10) -> list:
     return r.json().get("data", [])
 
 
+STAT_METRICS = ["views", "reach", "likes", "comments", "saved", "shares"]
+
+
+def profile(account: str) -> dict:
+    r = requests.get(f"{BASE}/me", params={"fields": "username,followers_count,media_count",
+                                           "access_token": token(account)}, timeout=30)
+    r.raise_for_status()
+    return r.json()
+
+
+def media_stats(account: str, limit: int = 20) -> list:
+    """最近の投稿ごとの閲覧数など（新しい順）。2026/10/25 追加。
+    instagram_business_manage_insights の権限が要る。取れない投稿は "error" に理由を入れる"""
+    r = requests.get(f"{BASE}/me/media", params={"fields": "id,caption,timestamp,permalink,media_type,like_count,comments_count",
+                                                 "limit": limit, "access_token": token(account)}, timeout=30)
+    r.raise_for_status()
+    out = []
+    for p in r.json().get("data", []):
+        row = {"id": p["id"], "timestamp": p.get("timestamp"), "permalink": p.get("permalink"),
+               "media_type": p.get("media_type"), "caption": (p.get("caption") or "").strip().splitlines()[0][:40] if p.get("caption") else "",
+               "likes": p.get("like_count"), "comments": p.get("comments_count")}
+        ir = requests.get(f"{BASE}/{p['id']}/insights", params={"metric": ",".join(STAT_METRICS),
+                                                               "access_token": token(account)}, timeout=30)
+        if ir.ok:
+            for m in ir.json().get("data", []):
+                vals = m.get("values") or [{}]
+                row[m["name"]] = m.get("total_value", {}).get("value", vals[0].get("value"))
+        else:
+            row["error"] = ir.text[:200]
+        out.append(row)
+    return out
+
+
 def publishing_limit(account: str) -> dict:
     r = requests.get(f"{BASE}/me/content_publishing_limit", params={"fields": "quota_usage,config",
                                                                      "access_token": token(account)}, timeout=30)
