@@ -213,7 +213,8 @@ def ig_post_due():
             _ig_done[slot] = {"status": "posting", "at": now.isoformat()}
             try:
                 if item.get("video"):  # リール（2026/10/25 鈴・週4本）。動画は GitHub Pages（video/mp4 で配られる）から
-                    pid = instagram_api.post_reel(item["caption"], f"{REEL_BASE}/{item['video']}", account)
+                    cover = f"{REEL_BASE}/{item['cover']}" if item.get("cover") else ""  # 表紙（一覧で何の投稿か分かるように）
+                    pid = instagram_api.post_reel(item["caption"], f"{REEL_BASE}/{item['video']}", account, cover)
                 else:
                     urls = [f"{IMG_BASE}/{p}" for p in item["images"]]
                     pid = instagram_api.post(item["caption"], urls, account)

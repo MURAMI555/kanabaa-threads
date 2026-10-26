@@ -84,11 +84,13 @@ def post(caption: str, image_urls: list, account: str) -> str:
     return r.json()["id"]
 
 
-def post_reel(caption: str, video_url: str, account: str) -> str:
-    """リール（縦動画）を投稿して公開後のIDを返す。2026/10/25 麗子から。動画は公開URL（MP4）を渡す"""
+def post_reel(caption: str, video_url: str, account: str, cover_url: str = "") -> str:
+    """リール（縦動画）を投稿して公開後のIDを返す。2026/10/25 麗子から。動画は公開URL（MP4）を渡す。
+    cover_url（JPEG）を渡すと、それが一覧の表紙になる（2026/10/26 最初のコマが真っ黒で何の投稿か分からなかったため）"""
     if not configured(account):
         raise RuntimeError(env_name(account) + " が未設定")
-    cid = _container(account, media_type="REELS", video_url=video_url, caption=caption, share_to_feed="true")
+    extra = {"cover_url": cover_url} if cover_url else {}
+    cid = _container(account, media_type="REELS", video_url=video_url, caption=caption, share_to_feed="true", **extra)
     _wait_ready(cid, account, tries=60)  # 動画の処理は長い（最長およそ5分）
     r = requests.post(f"{BASE}/me/media_publish", data={"creation_id": cid, "access_token": token(account)}, timeout=60)
     if not r.ok:
