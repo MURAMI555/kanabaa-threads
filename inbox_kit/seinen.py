@@ -2,7 +2,7 @@
 使い方: python -I -X utf8 seinen.py 19850614 [19801102]
 """
 import sys
-from datetime import date
+from datetime import date, timedelta
 
 ZODIAC = [  # (終わりの月, 日, 星座, 元素)
     (1, 19, "山羊座", "土"), (2, 18, "水瓶座", "風"), (3, 20, "魚座", "水"),
@@ -65,6 +65,25 @@ def personal(s, year, month=None):
     return n
 
 
+YOUBI = "月火水木金土日"
+
+
+def ugoku_hi(s, today):
+    """明日から7日のうち、個人日（個人月＋日）が1＝始まりの日。無ければ8＝決める日"""
+    days = [today + timedelta(days=i) for i in range(1, 8)]
+
+    def pday(d):
+        n = sum(int(c) for c in f"{personal(s, d.year, d.month)}{d.day}")
+        while n > 9:
+            n = sum(int(c) for c in str(n))
+        return n
+    for want, why in ((1, "始まりの日"), (8, "決める日")):
+        for d in days:
+            if pday(d) == want:
+                return f"{d.month}/{d.day}（{YOUBI[d.weekday()]}）＝{why}"
+    return "なし"
+
+
 def one(s):
     d = date(int(s[:4]), int(s[4:6]), int(s[6:8]))
     name, elem = zodiac(d)
@@ -98,6 +117,7 @@ def summary(s, label="", today=None):
         m, y = (t.month + i - 1) % 12 + 1, t.year + (t.month + i - 1) // 12
         months.append(f"{y % 100}/{m}={personal(s, y, m)}")
     lines.append("  個人月 " + " ".join(months))
+    lines.append("  動いていい日 " + ugoku_hi(s, t))
     if (d.month, d.day) in ((5, 20), (5, 21), (5, 22)):
         lines.append("  ※星座の境目の日。「境目」と書く")
     return "\n".join(lines), elem

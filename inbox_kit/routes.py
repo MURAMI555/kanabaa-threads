@@ -1,5 +1,7 @@
-"""叶ばぁの受付箱（下書きだけ自動。送るのはみかちゃんの手。本部⑥「自動返信ツール不使用」を守るため、ここからは何も送らない）。
+"""叶ばぁの受付箱。
 ・Threads：自分の投稿についたコメントを15分おきに読み、生年月日があれば返信の下書きを作る。返信済みは自動で「済」
+  2026/10/27 から、チェックに引っかからなかった下書きはそのまま Threads に返す（本部OKとみかちゃん確認）。
+  1回に5件まで・20秒あけて・コメントから2日以内だけ。止めるときは環境変数 THREADS_AUTO_REPLY=0。占わない相手（care）は手で
 ・LINE（公式 @492vxwcy・Messaging API の Webhook）：届いたメッセージを置き場に貯め、最後のメッセージから10分たったら初視の下書きを作る
   LINE へは返事を送らない（reply も push もしない）。返事は LINE公式アカウントのアプリ／chat.line.biz から手で
 ・/inbox?pin=… で一覧（スマホ用）。コピー・送った・飛ばす・霊視メモで作り直す
@@ -11,6 +13,7 @@ import html
 import json
 import os
 import threading
+import time
 import traceback
 from datetime import datetime, timedelta
 
@@ -28,6 +31,9 @@ _log: list = []
 LINE_WAIT = timedelta(minutes=10)     # 分けて送ってくる人がいるので、最後のメッセージから少し待つ
 LOOK_BACK = timedelta(days=10)        # この日数より古い投稿のコメントは見ない
 MY_NAME = "kanabaa.yoru"
+SEND_MAX = 5                          # 1回の見回りで返す数（短時間に大量に送らない）
+SEND_GAP = 20                         # 返信と返信のあいだ（秒）
+SEND_FRESH = timedelta(days=2)        # これより古いコメントには自動で返さない（手で）
 WINDOW = """病気・法律・借金のことは、婆さんは視ないよ。その道の人を頼っておくれ。"""
 CARE_TEXT = """話してくれてありがとね。その気持ち、ひとりで抱えなくていい。
 今夜は占いより先に、話を聞いてくれる人を頼っておくれ。
@@ -99,14 +105,53 @@ def draft_threads():
     if not (ready() and drafts.configured()):
         return
     for it in store.all_items().values():
-        if it["kind"] == "threads" and it["status"] == "new" and not it.get("draft"):
+        if it["kind"] != "threads":
+            continue
+        old_rule = it["status"] == "drafted" and it.get("rule") != drafts.THREADS_RULE_V and _fresh(it)  # 前の書き方の下書きは書き直す
+        if (it["status"] == "new" and not it.get("draft")) or old_rule:
             make_threads_draft(it)
+
+
+def _fresh(it: dict) -> bool:
+    """コメントが SEND_FRESH 以内か"""
+    try:
+        at = datetime.strptime(it.get("at", ""), "%Y-%m-%dT%H:%M:%S%z")
+    except ValueError:
+        return False
+    return datetime.now(JST) - at <= SEND_FRESH
+
+
+def send_threads():
+    """チェックに引っかからなかった下書きを、コメントへの返信として Threads に出す"""
+    if os.environ.get("THREADS_AUTO_REPLY", "1") == "0" or not (ready() and threads_api.configured()):
+        return
+    todo = sorted((i for i in store.all_items().values()
+                   if i["kind"] == "threads" and i["status"] == "drafted" and i.get("draft") and not i.get("hits")
+                   and i.get("rule") == drafts.THREADS_RULE_V),
+                  key=lambda i: i.get("at", ""))
+    sent = 0
+    for it in todo:
+        if not _fresh(it):
+            continue
+        if sent:
+            time.sleep(SEND_GAP)
+        try:
+            pid = threads_api.post(it["draft"], reply_to_id=it["id"][3:])
+            it.update(status="sent", closed=now_s(), sent_id=pid, auto=True, error="")
+            note(f"Threadsに返した {it['name']}")
+        except Exception as e:  # noqa: BLE001
+            it["error"] = f"自動で返せなかった: {e}"[:200]
+            note(f"{it['name']} への返信に失敗: {e}")
+        store.put(it)
+        sent += 1
+        if sent >= SEND_MAX:
+            break
 
 
 def make_threads_draft(it: dict):
     try:
         text, hits = drafts.threads_reply(it["name"], it["text"], it.get("dates") or [], it.get("post_text", ""))
-        it.update(draft=text, hits=hits, drafted=now_s(), status="drafted", error="")
+        it.update(draft=text, hits=hits, drafted=now_s(), status="drafted", error="", rule=drafts.THREADS_RULE_V)
     except Exception as e:  # noqa: BLE001
         traceback.print_exc()
         it.update(error=str(e)[:200])
@@ -227,7 +272,7 @@ def job():
     if not _job_lock.acquire(blocking=False):
         return
     try:
-        for f in (collect_threads, draft_threads, draft_line):
+        for f in (collect_threads, draft_threads, send_threads, draft_line):
             try:
                 f()
             except Exception as e:  # noqa: BLE001
