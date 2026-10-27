@@ -10,6 +10,7 @@
 import os
 import threading
 import traceback
+import time
 from datetime import datetime, timedelta
 
 import pytz
@@ -72,7 +73,17 @@ def post_slot(slot: str, parts: list, account: str) -> list:
     reply_to = None
     for p in parts:
         img = f"{IMG_BASE}/{p['image']}" if p.get("image") and IMG_BASE else None
-        pid = threads_api.post(p["text"], image_url=img, reply_to_id=reply_to, account=account)
+        # 続き（返信）は公開直後だと落ちることがある（10/27 麗子8:00の2本目が抜けた）。少し待って3回まで試す
+        for n in range(3 if reply_to else 1):
+            if reply_to:
+                time.sleep(10 * (n + 1))
+            try:
+                pid = threads_api.post(p["text"], image_url=img, reply_to_id=reply_to, account=account)
+                break
+            except Exception as e:  # noqa: BLE001
+                if not reply_to or n == 2:
+                    raise
+                _note(f"[{account}] {slot} の{len(ids) + 1}本目に失敗、やり直す: {e}")
         ids.append(pid)
         reply_to = pid
     return ids
