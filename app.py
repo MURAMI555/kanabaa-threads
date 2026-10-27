@@ -71,9 +71,6 @@ def _already_on_threads(first_text: str, at: datetime, account: str) -> bool:
 def post_slot(slot: str, parts: list, account: str) -> list:
     ids = []
     reply_to = None
-    for p in parts:
-        img = f"{IMG_BASE}/{p['image']}" if p.get("image") and IMG_BASE else None
-        # 続き（返信）は公開直後だと落ちることがある（10/27 麗子8:00の2本目が抜けた）。少し待って3回まで試す
     # 抜けた続きを後から足す時：1本目に "reply_under"（すでに出た親投稿の本文の書き出し）を書くと、その下に返信でつなぐ
     head = parts[0].get("reply_under")
     if head:
@@ -81,6 +78,9 @@ def post_slot(slot: str, parts: list, account: str) -> list:
         if not parent:
             raise RuntimeError(f"つなぐ先の投稿が見つからない: {head}")
         reply_to = parent["id"]
+    for p in parts:
+        img = f"{IMG_BASE}/{p['image']}" if p.get("image") and IMG_BASE else None
+        # 続き（返信）は公開直後だと落ちることがある（10/27 麗子8:00の2本目が抜けた）。少し待って3回まで試す
         for n in range(3 if reply_to else 1):
             if reply_to:
                 time.sleep(10 * (n + 1))
