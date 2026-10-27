@@ -78,6 +78,13 @@ def post_slot(slot: str, parts: list, account: str) -> list:
         if not parent:
             raise RuntimeError(f"つなぐ先の投稿が見つからない: {head}")
         reply_to = parent["id"]
+        # コメントへの返信：さらに "to_user" を書くと、その親投稿についたその人のコメントの下に返す
+        to_user = parts[0].get("to_user")
+        if to_user:
+            c = next((c for c in threads_api.conversation(reply_to, account=account) if c.get("username") == to_user), None)
+            if not c:
+                raise RuntimeError(f"{to_user} のコメントが見つからない")
+            reply_to = c["id"]
     for p in parts:
         img = f"{IMG_BASE}/{p['image']}" if p.get("image") and IMG_BASE else None
         # 続き（返信）は公開直後だと落ちることがある（10/27 麗子8:00の2本目が抜けた）。少し待って3回まで試す
