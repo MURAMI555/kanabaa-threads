@@ -211,8 +211,31 @@ def job():
             _note(f"@{c.get('username')} への返信に失敗（{_fail[c['id']]}回目）: {e} {body}")
 
 
+def peek() -> str:
+    """送らずに、いま何が見えているかを書き出す（/autoreply?peek=1）"""
+    now = datetime.now(JST)
+    out = []
+    for p in threads_api.my_posts(limit=25, account=ACCOUNT):
+        text = p.get("text") or ""
+        if "置いていきな" not in text:
+            continue
+        conv = threads_api.conversation(p["id"], account=ACCOUNT)
+        out.append(f"■ {p['timestamp']} {text[:20]} コメント{len(conv)}件")
+        for c in conv[:40]:
+            out.append(f"  @{c.get('username')} {c.get('timestamp')} 自分={c.get('is_reply_owned_by_me')} "
+                       f"親={(c.get('replied_to') or {}).get('id')} 隠={c.get('hide_status')} {(c.get('text') or '')[:15]}")
+    ids = [c['id'] for c, _ in candidates(now)]
+    return "\n".join(out) + f"\n\n候補 {len(ids)}件"
+
+
 @bp.get("/autoreply")
 def page():
+    from flask import request
+    if request.args.get("peek"):
+        try:
+            return f"<pre style='white-space:pre-wrap;font-size:12px'>{peek()}</pre>"
+        except Exception as e:
+            return f"<pre>{e} {getattr(getattr(e, 'response', None), 'text', '')[:300]}</pre>"
     rows = "\n".join(reversed(_log)) or "（まだ何もしていない）"
     state = "動いている" if enabled() else "止まっている（KANABAA_AUTOREPLY=0 かトークン無し）"
     return f"<pre style='white-space:pre-wrap;font-size:13px'>叶ばぁ 自動返信：{state}\n朝{HOURS[0]}時〜夜0時・コメントから15〜70分後・1回{PER_RUN}件まで\n\n{rows}</pre>"
