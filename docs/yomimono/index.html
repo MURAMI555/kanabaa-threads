@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>叶ばぁ｜初視が届く前に</title>
+<meta name="description" content="初視を待っているあんたへ。叶ばぁがどんな婆さんで、初視をどう読んでほしいか。">
+<meta property="og:title" content="叶ばぁ｜初視が届く前に">
+<meta property="og:description" content="初視が届く前に、これだけ読んでおいておくれ。">
+<meta property="og:image" content="../kanabaa.jpg">
+<meta name="robots" content="noindex">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --kinari:#f3ece0; --kami:#fbf7ef; --ai:#1e3148; --ai-2:#34506f;
+    --sumi:#2b2723; --usuzumi:#6e665d; --shu:#b23a2a; --sen:#d9cdb8;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--kinari);color:var(--sumi);
+    font-family:"Shippori Mincho","Hiragino Mincho ProN","Yu Mincho",serif;
+    line-height:2;letter-spacing:.04em;font-size:16px;padding-bottom:0}
+  .wrap{max-width:560px;margin:0 auto;padding:0 20px}
+  section{padding:48px 0;border-bottom:1px solid var(--sen)}
+  section:last-of-type{border-bottom:0}
+  h2{font-size:21px;font-weight:700;color:var(--ai);margin:0 0 20px;letter-spacing:.12em;text-align:center;line-height:1.7}
+  h2 small{display:block;font-size:12px;color:var(--usuzumi);letter-spacing:.3em;font-weight:500}
+  p{margin:0 0 1em}
+  .c{text-align:center}
+  .em{color:var(--shu);font-weight:700}
+
+  .hero{padding:40px 0 44px;text-align:center}
+  .hero img{width:120px;height:120px;border-radius:50%;object-fit:cover;
+    border:3px solid var(--kami);box-shadow:0 0 0 1px var(--sen)}
+  .for{margin:16px 0 0;font-size:13px;color:var(--usuzumi);letter-spacing:.2em}
+  .catch{margin:14px 0 18px;font-size:24px;font-weight:700;line-height:1.8;color:var(--ai)}
+  .catch .in{color:var(--shu)}
+
+  /* 料金と残り時間 */
+  .price{background:var(--kami);border:1px solid var(--sen);border-radius:8px;padding:20px 16px;margin:24px 0 0;text-align:center}
+  .price .lbl{display:inline-block;background:var(--shu);color:#fff;font-size:13px;padding:2px 12px;border-radius:999px;letter-spacing:.1em}
+  .price .yen{font-size:15px;line-height:1.8;margin:10px 0 0}
+  .price .yen s{color:var(--usuzumi)}
+  .price .yen b{font-size:34px;color:var(--shu);letter-spacing:.02em}
+  .price .rule{font-size:12.5px;color:var(--usuzumi);line-height:1.8;margin:10px 0 0}
+  .timer{margin:12px 0 0;font-size:15px;color:var(--ai);font-weight:700}
+  .timer .t{font-size:22px;color:var(--shu);letter-spacing:.06em}
+
+  .btn{display:block;width:100%;max-width:400px;margin:22px auto 0;padding:18px 12px;border-radius:999px;
+    background:#06c755;color:#fff;text-decoration:none;font-weight:700;font-size:18px;
+    letter-spacing:.1em;line-height:1.5;box-shadow:0 3px 0 #04913d;text-align:center}
+  .btn small{display:block;font-size:12px;font-weight:500;letter-spacing:.05em;opacity:.95}
+  .btn[aria-disabled="true"]{background:#9a958d;box-shadow:0 3px 0 #77726b;pointer-events:none}
+
+  .story p{font-size:15.5px}
+  .big{font-size:19px;font-weight:700;color:var(--ai);text-align:center;line-height:1.9;margin:1.4em 0}
+
+  /* 違いの表 */
+  table{width:100%;border-collapse:collapse;font-size:14px;line-height:1.7;background:var(--kami)}
+  th,td{border:1px solid var(--sen);padding:10px 8px;vertical-align:top}
+  th{background:var(--ai);color:var(--kami);font-weight:700}
+  td.y{text-align:center;color:var(--shu);font-weight:700;width:22%}
+  td.n{text-align:center;color:var(--usuzumi);width:22%}
+
+  .list{list-style:none;margin:0;padding:0}
+  .list li{background:var(--kami);border:1px solid var(--sen);border-radius:6px;
+    padding:12px 16px;margin:0 0 10px;font-size:15.5px;line-height:1.8}
+
+  .num{display:flex;gap:14px;align-items:flex-start;margin:0 0 20px}
+  .num .k{flex:0 0 auto;width:40px;height:40px;border-radius:50%;background:var(--ai);color:var(--kami);
+    display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;line-height:1}
+  .num h3{margin:4px 0 2px;font-size:17px;color:var(--ai);line-height:1.7}
+  .num p{margin:0;font-size:14.5px;line-height:1.9}
+  .flow .k{background:var(--kami);color:var(--ai);border:1px solid var(--ai-2)}
+
+  .box{background:var(--kami);border:1px solid var(--sen);border-radius:6px;padding:18px}
+  .box p{font-size:15px}
+
+  details{background:var(--kami);border:1px solid var(--sen);border-radius:6px;margin:0 0 10px;padding:12px 16px}
+  summary{cursor:pointer;font-weight:700;color:var(--ai);font-size:15px;line-height:1.7}
+  details p{margin:10px 0 0;font-size:14.5px;line-height:1.9}
+
+  footer{padding:28px 0 40px;text-align:center;font-size:12px;color:var(--usuzumi);line-height:1.9}
+  .hanko{display:inline-block;margin-top:12px;border:2px solid var(--shu);color:var(--shu);
+    padding:4px 8px;font-size:13px;font-weight:700;letter-spacing:.1em;transform:rotate(-4deg)}
+
+  /* 下に固定の帯 */
+  .bar{position:fixed;left:0;right:0;bottom:0;background:var(--ai);color:var(--kami);z-index:10;
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom))}
+  .bar .in{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
+  .bar .info{flex:1 1 auto;font-size:12.5px;line-height:1.5}
+  .bar .info b{font-size:15px}
+  .bar a{flex:0 0 auto;background:var(--shu);color:#fff;text-decoration:none;font-weight:700;
+    padding:10px 16px;border-radius:999px;font-size:14px;letter-spacing:.06em}
+  .bar a[aria-disabled="true"]{background:#9a958d;pointer-events:none}
+</style>
+<style>.list li b{color:var(--ai)}</style>
+</head>
+<body>
+<main class="wrap">
+
+  <section class="hero">
+    <img src="../kanabaa.jpg" alt="叶ばぁ" width="120" height="120">
+    <p class="for">初視を待っているあんたへ</p>
+    <p class="catch">初視が届く前に、<br><span class="in">これだけ</span><br>読んでおいておくれ。</p>
+    <p class="c" style="font-size:14px;color:var(--usuzumi)">3分で読めるよ。最後まで読んでから<br>初視を開くと、書いてあることが、すっと入るでね。</p>
+  </section>
+
+  <section class="story">
+    <h2><small>い ち</small>婆さんのこと</h2>
+    <p>若いころは、ホステスをしていた。<br>男の本音と、女の人の泣き顔を、毎晩見てきたよ。</p>
+    <p>そのあと店を何軒も回して、何千人の客と社員を見てきた。</p>
+    <p>そこで分かったことは、ひとつだけ。</p>
+    <p class="big">人は、言葉より<br>行動に本音が出る。</p>
+    <p>「好きだよ」と言う男より、黙って時間を作る男のほうが本気だった。<br>「落ち着いたら」と言う男の「落ち着いたら」は、来ないことのほうが多かった。</p>
+    <p>だから婆さんは、彼の言葉じゃなく、彼の動きを視るんだがね。</p>
+  </section>
+
+  <section class="story">
+    <h2><small>に</small>待つ女は負ける</h2>
+    <p>夜の店で、待ってる女の人をたくさん見てきた。</p>
+    <p>連絡を待つ。<br>「そのうち」を待つ。<br>彼が変わるのを待つ。</p>
+    <p>やさしい人ほど、待つんだよ。<br>相手の都合を考えて、自分の気持ちは後回しにして。</p>
+    <p>でもね、待ってるあいだに、自分のほうがすり減っていく。<br>婆さんは、それが一番もったいないと思ってる。</p>
+    <p class="big">待つ以外にできることは、<br>ひとつはある。</p>
+    <p>初視は、それを見つけるためのもんだよ。</p>
+  </section>
+
+  <section>
+    <h2><small>さ ん</small>婆さんが視るもの</h2>
+    <div class="num"><div class="k">壱</div><div><h3>霊視</h3><p>あんたが書いてくれた言葉を読んで、婆さんに視えたもの、感じたものを書くよ。視えたことを「こうなる」とは言わない。「こう視える」と、そのまま伝える。</p></div></div>
+    <div class="num"><div class="k">弐</div><div><h3>生年月日</h3><p>星座と数から、あんたの恋の癖、相手の癖、二人の噛み合わせを視る。今年と今月の巡りも、ここから読むよ。</p></div></div>
+    <div class="num"><div class="k">参</div><div><h3>あんたの言葉</h3><p>いちばん大事なのは、あんたが書いてくれた言葉そのもの。うまく書けてなくていい。言葉の選び方に、本音が出るでね。</p></div></div>
+  </section>
+
+  <section>
+    <h2><small>よ ん</small>初視の読み方</h2>
+    <ul class="list">
+      <li><b>一人になれる時間に開く。</b><br>仕事の合間や、人のいる所で読むと、半分しか入らないよ。</li>
+      <li><b>一度目は、流して読む。</b><br>最後まで、止まらずに。</li>
+      <li><b>二度目は、手が止まったところを覚えておく。</b><br>「なんで分かるの」と思ったところ、認めたくないのに認めたところ。そこが、あんたが一人で我慢してきた場所だよ。</li>
+      <li><b>違うと思ったところも、そのままにしない。</b><br>違うと思ったら、どう違うか、ひと言返しておくれ。婆さんはちゃんと読む。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><small>ご</small>待つあいだに、ひとつだけ</h2>
+    <div class="box">
+      <p>初視が届くまで、彼への連絡をひとつ足さないでおくれ。</p>
+      <p>送りたくなったら、その言葉をメモに書いておきな。<br>初視を読んでから、送るかどうか決めればいい。</p>
+      <p>それと、今夜はあんたのために、ひとつだけ何かをしな。<br>好きなもんを食べる、早く寝る、なんでもいい。<br>自分を後回しにしない練習だよ。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>婆さんが視ないもの</h2>
+    <p>病気・法律・借金のことは視ないよ。その道の人を頼っておくれ。</p>
+    <p>もし今、消えてしまいたいほどしんどいなら、占いより先に、ここに話しておくれ。<br>よりそいホットライン 0120-279-338（24時間）</p>
+  </section>
+
+  <section>
+    <h2>最後まで読んでくれた<br>あんたへ</h2>
+    <p>ありがとね。<br>ここまで読んでくれたあんたなら、初視をちゃんと受け取れる。</p>
+    <p>読んだら、LINEに「読んだよ」とひと言だけ返しておくれ。<br>婆さん、それを見てから、あんたの分を仕上げるでね。</p>
+    <a class="btn js-line" href="https://line.me/R/ti/p/%40492vxwcy">LINEに「読んだよ」と返す<small>叶ばぁの公式LINEが開くよ</small></a>
+    <p class="c" style="margin-top:28px;font-size:13.5px;color:var(--usuzumi)">初視で視るのは「今どこで止まってるか」まで。<br>その先の「次の一手」は、初視のあとに案内するよ。</p>
+  </section>
+
+</main>
+<footer class="wrap">
+  叶ばぁ（かなばぁ）｜Threads @kanabaa.yoru<br>
+  占いは、背中を押すためのもの。未来や結果を約束するものではないよ。<br>
+  20歳未満の方は受けられません。
+  <div><span class="hanko">叶ばぁ</span></div>
+</footer>
+</body>
+</html>
