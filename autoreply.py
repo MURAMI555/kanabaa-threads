@@ -209,11 +209,12 @@ def candidates(now: datetime) -> list:
     return sorted(out, key=lambda x: x[0]["timestamp"])
 
 
-def job():
+def job(rush: bool = False):
+    """rush＝みかちゃんの「今日のは全部返して」。待ち時間と件数の上限を外す（間は40〜120秒あける）"""
     if not enabled():
         return
     now = datetime.now(JST)
-    if not (HOURS[0] <= now.hour < HOURS[1]):
+    if not rush and not (HOURS[0] <= now.hour < HOURS[1]):
         return
     try:
         cands = candidates(now)
@@ -222,9 +223,9 @@ def job():
         return
     sent = 0
     for c, post_text, used in cands:
-        if sent >= PER_RUN:
+        if sent >= (20 if rush else PER_RUN):
             break
-        if now < _ts(c["timestamp"]) + _delay(c["id"]):
+        if not rush and now < _ts(c["timestamp"]) + _delay(c["id"]):
             continue
         text, why = make_reply(c.get("username", ""), c.get("text", ""), post_text, now.date(), c["id"], used)
         if text and kinshi.check(text):
@@ -268,6 +269,11 @@ def peek() -> str:
 @bp.get("/autoreply")
 def page():
     from flask import request
+    if request.args.get("rush") == "1019":
+        import threading
+        threading.Thread(target=job, kwargs={"rush": True}, daemon=True).start()
+        _note("今いる分を全部返す（みかちゃん指示）")
+        return "<pre>今いる分を順番に返しはじめた。数分後に /autoreply を見てね</pre>"
     if request.args.get("peek"):
         try:
             return f"<pre style='white-space:pre-wrap;font-size:12px'>{peek()}</pre>"
