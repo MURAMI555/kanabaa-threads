@@ -75,7 +75,7 @@ def post(text: str, image_url: str | None = None, reply_to_id: str | None = None
     r = requests.post(f"{BASE}/{user_id(account)}/threads", data=data, timeout=60)
     r.raise_for_status()
     creation_id = r.json()["id"]
-    if image_url:
+    if image_url or reply_to_id:  # 他人のコメントへの返信も、すぐ公開すると「Media Not Found」(400) になることがある（10/28）
         _wait_ready(creation_id, account)
     r2 = requests.post(f"{BASE}/{user_id(account)}/threads_publish",
                        data={"creation_id": creation_id, "access_token": token(account)}, timeout=60)
