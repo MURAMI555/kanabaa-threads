@@ -89,6 +89,8 @@ def name_of(username: str) -> str:
     h = len(n) // 2
     if len(n) >= 8 and n[:h] == n[h:]:
         n = n[:h]
+    if len(n) > 10 and "_" in n.strip("_"):  # iamyu_chan_desu → iamyu
+        n = n.strip("_").split("_")[0]
     return n
 
 
