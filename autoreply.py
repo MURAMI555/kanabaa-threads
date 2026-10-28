@@ -92,54 +92,87 @@ def name_of(username: str) -> str:
     return n
 
 
-def birth_reply(username: str, s: str, today: date, rnd: random.Random) -> str:
+def pick(options: list, used, rnd: random.Random) -> str:
+    """同じ投稿でもう使った言い回しを避けて1つ選ぶ（全部使っていたら一番使っていないもの）"""
+    opts = options[:]
+    rnd.shuffle(opts)
+    return min(opts, key=lambda o: sum(o in u for u in used))
+
+
+def birth_reply(username: str, s: str, today: date, rnd: random.Random, used=()) -> str:
     d, kind = ugoku(s, today)
     name, _ = seinen.zodiac(date(int(s[:4]), int(s[4:6]), int(s[6:8])))
     lp = seinen.life_path(s)
     label, advice = HI[kind]
     next_week = d - timedelta(days=d.weekday()) > today - timedelta(days=today.weekday())
     when = f"{'来週' if next_week else ''}{d.day}日の{seinen.YOUBI[d.weekday()]}曜"
-    lines = [rnd.choice(HEAD).format(n=name_of(username)),
+    lines = [pick(HEAD, used, rnd).format(n=name_of(username)),
              f"あんたが動いていいのは、{when}。",
-             f"{name}で{lp}の人は、{HITO[lp]}{rnd.choice(GOBI)}{seinen.YOUBI[d.weekday()]}曜は「{label}」の巡り。{rnd.choice(advice)}",
-             rnd.choice(TEASE)]
+             f"{name}で{lp}の人は、{HITO[lp]}{rnd.choice(GOBI)}{seinen.YOUBI[d.weekday()]}曜は「{label}」の巡り。{pick(advice, used, rnd)}",
+             pick(TEASE, used, rnd)]
     return "\n".join(lines)
 
 
-TSUKI = {
-    1: "1月の縁は、始まりの縁。どちらかが手を引いて進む流れだよ。",
-    2: "2月に出会った2人は、言葉より空気で分かり合う流れ。そのぶん、言わないことが溜まりやすい。",
-    3: "3月の縁は、話して笑って近づく流れ。楽しい時は早いけど、真面目な話を後回しにしがちだね。",
-    4: "4月に出会った2人は、ゆっくり積み上げる流れ。急には進まないぶん、崩れにくい縁だよ。",
-    5: "5月に出会った2人は、会うたびに何か新しいことが起きる流れ。退屈はしないけど、落ち着く前に次の動きが入りやすいんだよ。",
-    6: "6月の縁は、情で結ばれる流れ。相手の世話を焼くほど、自分の気持ちを言いそびれやすい。",
-    7: "7月に出会った2人は、近いようで少し距離のある流れ。一人の時間を許し合えるかが分かれ目だね。",
-    8: "8月の縁は、暮らしの事情が動かす流れ。仕事や住まいで、距離が変わりやすいんだよ。",
-    9: "9月に出会った2人は、何かを手放した後に深まる流れ。区切りと始まりが重なる縁だね。",
-    10: "10月の縁は、どちらが先に動くかで先が決まる流れ。待ち合いになると止まりやすいよ。",
-    11: "11月に出会った2人は、気持ちが通じるのが早い。そのぶん、近づいたり離れたりの波も大きい流れだよ。",
-    12: "12月に出会った2人は、振り返る時間の多い流れ。思い出が濃いぶん、過去に引っ張られやすいね。",
+TSUKI = {  # 月ごとに3通り。同じ月の人が続いても同じ文にしない（10/28 みかちゃん）
+    1: ["1月の縁は、始まりの縁。どちらかが手を引いて進む流れだよ。",
+        "1月に出会った2人は、どちらかが先に決めて動く流れ。引っ張る側と待つ側が、はっきり分かれやすいよ。",
+        "1月の縁は、新しいことと一緒に始まった縁。勢いはあるけど、立ち止まると迷いやすいね。"],
+    2: ["2月に出会った2人は、言葉より空気で分かり合う流れ。そのぶん、言わないことが溜まりやすい。",
+        "2月の縁は、そばにいるだけで落ち着く流れ。ただ、遠慮が続くと距離が縮まらないんだよ。",
+        "2月に始まった2人は、相手に合わせ合う流れ。優しいぶん、本音が後回しになりやすいね。"],
+    3: ["3月の縁は、話して笑って近づく流れ。楽しい時は早いけど、真面目な話を後回しにしがちだね。",
+        "3月に出会った2人は、言葉で近づく流れ。連絡が弾む時と止まる時の差が大きいんだよ。",
+        "3月の縁は、明るく始まる縁。軽く見えて、実は相手の一言を長く覚えてる流れだね。"],
+    4: ["4月に出会った2人は、ゆっくり積み上げる流れ。急には進まないぶん、崩れにくい縁だよ。",
+        "4月の縁は、約束を一つずつ守って深まる流れ。小さな約束が崩れると、気持ちも止まりやすいよ。",
+        "4月に始まった2人は、地に足のついた流れ。派手さはないけど、時間が味方になる縁だね。"],
+    5: ["5月に出会った2人は、会うたびに何か新しいことが起きる流れ。退屈はしないけど、落ち着く前に次の動きが入りやすいんだよ。",
+        "5月の縁は、自由でいられる時ほどうまくいく流れ。縛ろうとすると、相手の足が遠のきやすいよ。",
+        "5月に始まった2人は、動きの多い流れ。会う間隔が空いても、それだけで終わる縁じゃないね。"],
+    6: ["6月の縁は、情で結ばれる流れ。相手の世話を焼くほど、自分の気持ちを言いそびれやすい。",
+        "6月に出会った2人は、世話を焼き合う流れ。優しさが重なるほど、言えないことも増えやすいよ。",
+        "6月の縁は、暮らしに近いところで深まる縁。特別な日より、普段の一言が効く流れだね。"],
+    7: ["7月に出会った2人は、近いようで少し距離のある流れ。一人の時間を許し合えるかが分かれ目だね。",
+        "7月の縁は、一人の時間を大事にする2人の流れ。連絡が少なくても、気持ちが冷めたとは限らないよ。",
+        "7月に始まった2人は、ゆっくり本音に近づく流れ。急かすと扉が閉まりやすいね。"],
+    8: ["8月の縁は、暮らしの事情が動かす流れ。仕事や住まいで、距離が変わりやすいんだよ。",
+        "8月に出会った2人は、現実の事情に揺られる流れ。気持ちより先に、時間と場所が距離を決めやすいよ。",
+        "8月の縁は、力のある縁。どちらが舵を握るかで、流れががらっと変わるね。"],
+    9: ["9月に出会った2人は、何かを手放した後に深まる流れ。区切りと始まりが重なる縁だね。",
+        "9月の縁は、手放すことで近づく流れ。握りしめるほど、相手は息苦しくなりやすいよ。",
+        "9月に始まった2人は、古い何かと入れ替わるように出会った縁。昔のことが片づくと流れが動くね。"],
+    10: ["10月の縁は、どちらが先に動くかで先が決まる流れ。待ち合いになると止まりやすいよ。",
+         "10月に出会った2人は、先に動いたほうが流れを作る縁。様子見が長いと、そのまま止まりやすいよ。",
+         "10月の縁は、始まりの気配をまとった縁。一度区切りがあっても、もう一度動き出しやすい流れだね。"],
+    11: ["11月に出会った2人は、気持ちが通じるのが早い。そのぶん、近づいたり離れたりの波も大きい流れだよ。",
+         "11月の縁は、理屈より先に気持ちが動く縁。言葉にしなくても伝わってる、と思い込みやすいのが癖だね。",
+         "11月に始まった2人は、勘で引き合う流れ。会った瞬間に何か感じたなら、その勘は大事にしな。勘の強い縁ほど、すれ違いも大きく感じるもんだよ。"],
+    12: ["12月に出会った2人は、振り返る時間の多い流れ。思い出が濃いぶん、過去に引っ張られやすいね。",
+         "12月の縁は、一年の終わりに結ばれた縁。季節の区切りごとに、気持ちを確かめたくなる流れだよ。",
+         "12月に始まった2人は、思い出の濃い流れ。昔の話が増えた時は、今の話を一つ足しな。"],
 }
 IMA = ["今のあんたは、相手の出方を待ってるように視えるね。", "今のあんたは、言いたいことを飲み込んでるように視える。",
-       "今のあんたは、気持ちが少し先に行ってるように視えるね。", "今は、波の引いてるところに視える。引いてる時に追うと、相手は余計に遠くなるからね。"]
+       "今のあんたは、気持ちが少し先に行ってるように視えるね。", "今は、波の引いてるところに視える。引いてる時に追うと、相手は余計に遠くなるからね。",
+       "今のあんたは、相手の本音を確かめたくて落ち着かないように視える。", "今は、2人の間に少し遠慮が挟まってるように視えるね。"]
 
 
-def month_reply(username: str, m: int, rnd: random.Random) -> str:
-    return "\n".join([rnd.choice(HEAD).format(n=name_of(username)), TSUKI[m], rnd.choice(IMA), rnd.choice(TEASE)])
+def month_reply(username: str, m: int, rnd: random.Random, used=()) -> str:
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), pick(TSUKI[m], used, rnd),
+                      pick(IMA, used, rnd), pick(TEASE, used, rnd)])
 
 
-def make_reply(username: str, comment: str, post_text: str, today: date, seed: str):
-    """(文面 or None, 読めなかった理由)"""
+def make_reply(username: str, comment: str, post_text: str, today: date, seed: str, used=()):
+    """(文面 or None, 読めなかった理由)。used＝同じ投稿で叶ばぁがもう返した文（言い回しをかぶらせない）"""
     rnd = random.Random(seed)
     if kinshi.needs_care(comment):
         return None, "気持ちが重い言葉あり（手で）"
     if "生年月日" in post_text:
         ds = hizuke.find_dates(comment)
-        return (birth_reply(username, ds[0], today, rnd), "") if ds else (None, "生年月日が読めない")
+        return (birth_reply(username, ds[0], today, rnd, used), "") if ds else (None, "生年月日が読めない")
     if "出会った月" in post_text:
         s = unicodedata.normalize("NFKC", comment)
         nums = [int(x) for x in re.findall(r"(?<!\d)(\d{1,2})(?!\d)", s) if 1 <= int(x) <= 12]
-        return (month_reply(username, nums[0], rnd), "") if len(set(nums)) == 1 else (None, "月が読めない")
+        return (month_reply(username, nums[0], rnd, used), "") if len(set(nums)) == 1 else (None, "月が読めない")
     return None, "型のない投稿"
 
 
@@ -154,7 +187,7 @@ def _delay(cid: str) -> timedelta:
 
 
 def candidates(now: datetime) -> list:
-    """返す候補 [(コメント, 投稿の文)]。古い順"""
+    """返す候補 [(コメント, 投稿の文, その投稿で叶ばぁが返した文のリスト)]。古い順"""
     out = []
     for p in threads_api.my_posts(limit=25, account=ACCOUNT):
         text = p.get("text") or ""
@@ -162,6 +195,7 @@ def candidates(now: datetime) -> list:
             continue
         conv = threads_api.conversation(p["id"], account=ACCOUNT)
         answered = {(c.get("replied_to") or {}).get("id") for c in conv if c.get("is_reply_owned_by_me")}
+        used = [c.get("text") or "" for c in conv if c.get("is_reply_owned_by_me")]
         for c in conv:
             if c.get("is_reply_owned_by_me") or (c.get("replied_to") or {}).get("id") != p["id"]:
                 continue
@@ -169,7 +203,7 @@ def candidates(now: datetime) -> list:
                 continue
             if now - _ts(c["timestamp"]) > timedelta(hours=48):
                 continue
-            out.append((c, text))
+            out.append((c, text, used))
     return sorted(out, key=lambda x: x[0]["timestamp"])
 
 
@@ -185,12 +219,12 @@ def job():
         _note(f"コメントの取得に失敗: {e}")
         return
     sent = 0
-    for c, post_text in cands:
+    for c, post_text, used in cands:
         if sent >= PER_RUN:
             break
         if now < _ts(c["timestamp"]) + _delay(c["id"]):
             continue
-        text, why = make_reply(c.get("username", ""), c.get("text", ""), post_text, now.date(), c["id"])
+        text, why = make_reply(c.get("username", ""), c.get("text", ""), post_text, now.date(), c["id"], used)
         if text and kinshi.check(text):
             text, why = None, "チェックに引っかかった " + " / ".join(kinshi.check(text))
         if not text:
@@ -203,6 +237,7 @@ def job():
         try:
             threads_api.post(text, reply_to_id=c["id"], account=ACCOUNT)
             _done.add(c["id"])
+            used.append(text)
             sent += 1
             _note(f"@{c.get('username')} に返した\n{text}")
         except Exception as e:
@@ -224,7 +259,7 @@ def peek() -> str:
         for c in conv[:40]:
             out.append(f"  @{c.get('username')} {c.get('timestamp')} 自分={c.get('is_reply_owned_by_me')} "
                        f"親={(c.get('replied_to') or {}).get('id')} 隠={c.get('hide_status')} {(c.get('text') or '')[:15]}")
-    ids = [c['id'] for c, _ in candidates(now)]
+    ids = [c['id'] for c, _, _ in candidates(now)]
     return "\n".join(out) + f"\n\n候補 {len(ids)}件"
 
 
