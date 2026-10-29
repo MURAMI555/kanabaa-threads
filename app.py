@@ -19,6 +19,7 @@ from flask import Flask, jsonify, redirect, request
 
 import instagram_api
 import autoreply
+import autoreply_reiko
 import threads_api
 from inbox_kit import routes as inbox
 from schedule import POSTS
@@ -30,6 +31,7 @@ IMG_BASE = os.environ.get("IMG_BASE", "").rstrip("/")  # 例: https://raw.github
 REEL_BASE = os.environ.get("REEL_BASE", "https://murami555.github.io/kanabaa-threads/reels").rstrip("/")  # リールの動画（docs/reels/）。raw は octet-stream なので Pages を使う
 app = Flask(__name__)
 app.register_blueprint(autoreply.bp)  # 叶ばぁの置かせ投稿への自動返信 /autoreply
+app.register_blueprint(autoreply_reiko.bp)  # 麗子の夜のカウンター投稿への自動返信 /autoreply/reiko（21時〜0時台）
 app.register_blueprint(inbox.bp)  # 受付箱 /inbox・LINE Webhook /line/webhook（下書きだけ。送らない）
 _lock = threading.Lock()
 _done: dict = {}      # slot -> {"status","account","ids","error","at"}
@@ -323,6 +325,7 @@ if os.environ.get("DISABLE_SCHEDULER") != "1":
     _sched.add_job(ig_refresh_weekly, "cron", day_of_week="mon", hour=4, minute=10, id="ig_refresh")
     _sched.add_job(inbox.job, "interval", minutes=15, id="inbox", max_instances=1)
     _sched.add_job(autoreply.job, "interval", minutes=10, id="autoreply", max_instances=1)
+    _sched.add_job(autoreply_reiko.job, "interval", minutes=10, id="autoreply_reiko", max_instances=1)
     _sched.start()
     _note("scheduler started")
 
