@@ -3,8 +3,9 @@
 叶ばぁの autoreply.py と同じ回し方で、文面と時間帯だけ麗子用。
 ・対象：麗子の直近48時間の投稿のうち「0時で閉店」を含むもの（彼の星座か誕生日の月日、分からなければアナタの星座を置かせる）
 ・返すのは、投稿に直接ついたコメントで、まだ麗子が返していないものだけ
-・閉店の約束どおり、投稿した夜の0時までに来たコメントだけ。返すのは21時〜深夜0時59分（0時直前の分を返しきるため）
-・自然な間：コメントから 10〜40分。1回（10分ごと）に2件まで、1件ごとに40〜120秒あける
+・返すのは21時〜深夜0時59分だけ。叶ばぁと同じく、コメントから 15〜70分の自然な間をあける（10/29 みかちゃん「ばあさんみたいに」）
+・0時の閉店後に来たコメント・返しきれなかった分は、次の夜21時からの開店で「ゆうべは閉店のあとに…」と添えて返す
+・1回（10分ごと）に2件まで、1件ごとに40〜120秒あける
 ・星座の名前・月日（3/14・3月14日）・生年月日を読む。「私」「自分」などがあればアナタの星座として返す
 ・文面は禁止語チェック（麗子は「のよ」「です・ます」OKなので語だけ）を通ったものだけ。読めないコメントは返さず /autoreply/reiko に残す
 止めるときは Render の環境変数 REIKO_AUTOREPLY=0。"""
@@ -160,7 +161,11 @@ ME_TXT = {
 }
 
 
-def make_reply(username: str, comment: str, seed: str, used=()):
+LATE = ["ゆうべは閉店のあとに来てくれたのね。今夜いちばんに読むわ。",
+        "閉めたあとに置いてってくれたのね。今夜の開店一番で読むわよ。"]
+
+
+def make_reply(username: str, comment: str, seed: str, used=(), late=False):
     """(文面 or None, 読めなかった理由)"""
     rnd = random.Random(seed)
     if kinshi.needs_care(comment):
@@ -171,6 +176,8 @@ def make_reply(username: str, comment: str, seed: str, used=()):
     sign, md, who = got
     n = re.sub(r"[_.]?(chan|chang|tyan)$", "", name_of(username), flags=re.I) or name_of(username)
     lines = [pick(HEAD, used, rnd).format(n=n)]
+    if late:
+        lines.append(pick(LATE, used, rnd))
     if md:
         lines.append(f"{md}生まれなら、{sign}ね。")
     lines.append(pick((ME_TXT if who == "me" else HIM_TXT)[sign], used, rnd))
@@ -207,17 +214,12 @@ def candidates(now: datetime) -> list:
                 continue
             if c["id"] in answered or c["id"] in _done or _fail.get(c["id"], 0) >= 2 or c.get("hide_status") in ("HIDDEN", "COVERED", "BLOCKED", "RESTRICTED"):
                 continue
-            if _ts(c["timestamp"]) >= close:
-                if c["id"] not in _skip:
-                    _note(f"@{c.get('username')} は閉店後のコメントなので返さない")
-                _skip[c["id"]] = "閉店後"
-                continue
-            out.append((c, used))
+            out.append((c, used, _ts(c["timestamp"]) >= close or now >= close + timedelta(hours=1)))  # 次の夜に回った分
     return sorted(out, key=lambda x: x[0]["timestamp"])
 
 
 def _delay(cid: str) -> timedelta:
-    return timedelta(minutes=random.Random("r" + cid).randint(10, 40))
+    return timedelta(minutes=random.Random("r" + cid).randint(15, 70))
 
 
 def job(rush: bool = False):
@@ -232,13 +234,12 @@ def job(rush: bool = False):
         _note(f"コメントの取得に失敗: {e}")
         return
     sent = 0
-    for c, used in cands:
+    for c, used, late in cands:
         if sent >= (20 if rush else PER_RUN):
             break
-        # 0時台は待ち時間を短くして、0時前のコメントを返しきる
-        if not rush and now.hour != 0 and now < _ts(c["timestamp"]) + _delay(c["id"]):
+        if not rush and now < _ts(c["timestamp"]) + _delay(c["id"]):
             continue
-        text, why = make_reply(c.get("username", ""), c.get("text", ""), c["id"], used)
+        text, why = make_reply(c.get("username", ""), c.get("text", ""), c["id"], used, late)
         if text and check(text):
             text, why = None, "チェックに引っかかった " + " / ".join(check(text))
         if not text:
@@ -270,4 +271,4 @@ def page():
         return "<pre>今いる分を順番に返しはじめた。数分後に /autoreply/reiko を見てね</pre>"
     rows = "\n".join(reversed(_log)) or "（まだ何もしていない）"
     state = "動いている" if enabled() else "止まっている（REIKO_AUTOREPLY=0 かトークン無し）"
-    return f"<pre style='white-space:pre-wrap;font-size:13px'>麗子 自動返信：{state}\n夜21時〜0時台・0時までのコメントだけ・コメントから10〜40分後・1回{PER_RUN}件まで\n\n{rows}</pre>"
+    return f"<pre style='white-space:pre-wrap;font-size:13px'>麗子 自動返信：{state}\n夜21時〜0時台・コメントから15〜70分後・閉店後の分は次の夜・1回{PER_RUN}件まで\n\n{rows}</pre>"
