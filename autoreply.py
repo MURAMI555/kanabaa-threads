@@ -1,7 +1,8 @@
 """叶ばぁの「置かせる」投稿へのコメントに、自然な間をあけて自動で返す（2026/10/28 みかちゃん指示・本部OK）。
 
 受付箱（inbox_kit）と違って AI もデータ置き場も使わない。返信は型から組み立てる（同じ文の使い回しにならないよう、言い回しを人ごとに選ぶ）。
-・対象：叶ばぁの直近48時間の投稿のうち「置いていきな」を含むもの（生年月日 / 出会った月 / 漢字一字）
+・対象：叶ばぁの直近48時間の投稿のうち「置いていきな」を含むもの（生年月日 / 出会った月 / 漢字一字）。
+  お題の言葉に型が無い投稿でも、コメントの中身（8桁の日付・1〜12の数字・漢字）で返し方を選ぶ（10/31〜）
 ・返すのは、投稿に直接ついたコメントで、まだ叶ばぁが返していないものだけ（手で返した分も API で見えるので二重にならない）
 ・自然な間：コメントから 15〜70分（人ごとにばらす）たってから。朝8時〜夜0時だけ。夜中のコメントは朝に返す
 ・1回（10分ごと）に2件まで、1件ごとに40〜120秒あける。コメントから48時間を過ぎたものは返さない
@@ -23,6 +24,7 @@ from inbox_kit import hizuke, kinshi, seinen
 JST = pytz.timezone("Asia/Tokyo")
 ACCOUNT = "kanabaa"
 PER_RUN = 2
+OKASE = re.compile(r"置いていきな|置いてきな|置きな")  # 置かせ投稿の目印（言い方が少し変わっても拾う）
 HOURS = (8, 24)  # 返してよい時間帯（JST の時）
 bp = Blueprint("autoreply", __name__)
 _log: list = []
@@ -268,7 +270,26 @@ def make_reply(username: str, comment: str, post_text: str, today: date, seed: s
         if k in KANJI_OMOI:
             return None, "重い字（手で）"
         return (kanji_reply(username, k, rnd, used), "") if k else (None, "漢字が読めない")
-    return None, "型のない投稿"
+    return by_content(username, comment, post_text, today, rnd, used)
+
+
+def by_content(username: str, comment: str, post_text: str, today: date, rnd: random.Random, used=()):
+    """お題の言い方が型と違う投稿は、コメントの中身で返し方を選ぶ（10/31 みかちゃん「お題が変わるたびに直さなくていいように」）。
+    8桁の日付→生年月日の型（どのお題でも）／「出会」のお題で短いコメントの1〜12→月の型／「一字・漢字」のお題で短いコメントの漢字→漢字一字の型。
+    どれでもない（頭文字・誕生月など新しい種類のお題）は返さず /autoreply に残す＝手で返すか、型を足す"""
+    ds = hizuke.find_dates(comment)
+    if ds:
+        return birth_reply(username, ds[0], today, rnd, used), ""
+    s = re.sub(r"[\s、。,.!！?？~〜ー…・笑w]|です|でした|お願いします|おねがいします|よろしく", "", unicodedata.normalize("NFKC", comment))
+    nums = re.findall(r"\d+", s)
+    if "出会" in post_text and len(s) <= 6 and len(nums) == 1 and 1 <= int(nums[0]) <= 12 and len(nums[0]) <= 2:
+        return month_reply(username, int(nums[0]), rnd, used), ""
+    k = kanji_of(s)
+    if re.search(r"一字|漢字", post_text) and k and not nums and len(s) <= 3:
+        if k in KANJI_OMOI:
+            return None, "重い字（手で）"
+        return kanji_reply(username, k, rnd, used), ""
+    return None, "読めないコメント（手で）"
 
 
 # ---------- 回す ----------
@@ -286,7 +307,7 @@ def candidates(now: datetime) -> list:
     out = []
     for p in threads_api.my_posts(limit=25, account=ACCOUNT):
         text = p.get("text") or ""
-        if "置いていきな" not in text or now - _ts(p["timestamp"]) > timedelta(hours=48):
+        if not OKASE.search(text) or now - _ts(p["timestamp"]) > timedelta(hours=48):
             continue
         conv = threads_api.conversation(p["id"], account=ACCOUNT)
         answered = {(c.get("replied_to") or {}).get("id") for c in conv if c.get("is_reply_owned_by_me")}
@@ -348,7 +369,7 @@ def peek() -> str:
     out = []
     for p in threads_api.my_posts(limit=25, account=ACCOUNT):
         text = p.get("text") or ""
-        if "置いていきな" not in text:
+        if not OKASE.search(text):
             continue
         conv = threads_api.conversation(p["id"], account=ACCOUNT)
         out.append(f"■ {p['timestamp']} {text[:20]} コメント{len(conv)}件")
