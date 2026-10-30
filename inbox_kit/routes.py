@@ -4,6 +4,7 @@
   1回に5件まで・20秒あけて・コメントから2日以内だけ。止めるときは環境変数 THREADS_AUTO_REPLY=0。占わない相手（care）は手で
 ・LINE（公式 @492vxwcy・Messaging API の Webhook）：届いたメッセージを置き場に貯め、最後のメッセージから10分たったら初視の下書きを作る
   LINE へは返事を送らない（reply も push もしない）。返事は LINE公式アカウントのアプリ／chat.line.biz から手で
+  ※例外：4項目が届いた合図の「届いたよ」1通だけは line_uketsuke.py が約10分後に push する（2026/10/31〜）
 ・/inbox?pin=… で一覧（スマホ用）。コピー・送った・飛ばす・霊視メモで作り直す
 環境変数：INBOX_PIN／INBOX_STORE_URL・INBOX_STORE_KEY（gas/kanabaa_inbox.gs）／ANTHROPIC_API_KEY／LINE_CHANNEL_SECRET・LINE_CHANNEL_ACCESS_TOKEN"""
 import base64
@@ -181,9 +182,16 @@ def line_webhook():
     sig = base64.b64encode(hmac.new(secret.encode(), body, hashlib.sha256).digest()).decode()
     if not hmac.compare_digest(sig, request.headers.get("X-Line-Signature", "")):
         abort(400)
+    events = json.loads(body or b"{}").get("events", [])
+    import line_uketsuke  # 4項目が届いたら約10分後に「届いたよ」（10/31 みかちゃん）。受付箱の置き場が無くても動く
+    for ev in events:
+        try:
+            line_uketsuke.on_event(ev)
+        except Exception as e:  # noqa: BLE001
+            note(f"LINEの「届いたよ」で失敗: {e}")
     if not ready():
         return "ok"
-    for ev in json.loads(body or b"{}").get("events", []):
+    for ev in events:
         try:
             _on_line_event(ev)
         except Exception as e:  # noqa: BLE001
