@@ -6,7 +6,8 @@
 ・返すのは21時〜深夜0時59分だけ。叶ばぁと同じく、コメントから 15〜70分の自然な間をあける（10/29 みかちゃん「ばあさんみたいに」）
 ・0時の閉店後に来たコメント・返しきれなかった分は、次の夜21時からの開店で「ゆうべは閉店のあとに…」と添えて返す
 ・1回（10分ごと）に2件まで、1件ごとに40〜120秒あける
-・星座の名前・月日（3/14・3月14日）・生年月日を読む。「私」「自分」などがあればアナタの星座として返す
+・星座の名前・月日（3/14・3月14日）・数字4桁（0314・10/31〜）・生年月日を読む。「私」「自分」などがあればアナタの星座、
+  数字だけなら投稿が聞いた側（「アナタの誕生日を」の夜はアナタ、ほかは彼）として返す
 ・文面は禁止語チェック（麗子は「のよ」「です・ます」OKなので語だけ）を通ったものだけ。読めないコメントは返さず /autoreply/reiko に残す
 止めるときは Render の環境変数 REIKO_AUTOREPLY=0。"""
 import os
@@ -71,10 +72,10 @@ def sign_of(m: int, d: int) -> str:
     return seinen.zodiac(date(2000, m, d))[0]
 
 
-def read_comment(comment: str):
-    """(星座, 月日の言い直し or "", 誰の星座 'him'/'me') か None"""
+def read_comment(comment: str, default_who: str = "him"):
+    """(星座, 月日の言い直し or "", 誰の星座 'him'/'me') か None。default_who＝投稿が誰の誕生日を聞いたか"""
     s = unicodedata.normalize("NFKC", comment or "")
-    who = "me" if SELF.search(s) and not HIM.search(s) else "him"
+    who = "me" if SELF.search(s) and not HIM.search(s) else "him" if HIM.search(s) else default_who
     hits = [sg for sg, words in ALIAS.items() if any(w in s for w in words)]
     if len(hits) == 1:
         return hits[0], "", who
@@ -96,6 +97,19 @@ def read_comment(comment: str):
             return sign_of(m, d), f"{m}月{d}日", who
         except ValueError:
             return None
+    # 「1103」「0314」「314」＝数字4桁の置かせ（10/31〜）。3桁は 111（1/11 か 11/1）のように両方読めるものは読まない
+    ok = set()
+    for x in re.findall(r"(?<!\d)(\d{3,4})(?!\d)", s):
+        cuts = [(x[:2], x[2:])] if len(x) == 4 else [(x[:1], x[1:]), (x[:2], x[2:])]
+        for m, d in cuts:
+            try:
+                sign_of(int(m), int(d))
+                ok.add((int(m), int(d)))
+            except ValueError:
+                pass
+    if len(ok) == 1:
+        m, d = ok.pop()
+        return sign_of(m, d), f"{m}月{d}日", who
     return None
 
 
@@ -105,7 +119,9 @@ HEAD = ["{n}ちゃん、いらっしゃい。", "{n}ちゃん、いらっしゃ�
 CLOSE = ["もっと聞きたい夜は、プロフィールからカウンター席にいらっしゃい。",
          "続きは、プロフィールのカウンター席でゆっくり聞くわ。",
          "今夜は、それだけ覚えて寝なさい。",
-         "今夜はここまで。いい夢見なさいね。"]
+         "今夜はここまで。いい夢見なさいね。",
+         "続きが聞きたかったら、フォローしときなさい。毎晩カウンター開けてるから。",
+         "また来なさいね。フォローしとけば、開店の夜が分かるわよ。"]
 
 HIM_TXT = {
     "牡羊座": ["牡羊座の男はね、好きになったら自分から走ってくる男よ。走ってこない時は、まだ火がついてないだけ。追いかけるより、火がつく話題をひとつ投げなさい。",
@@ -165,12 +181,17 @@ LATE = ["ゆうべは閉店のあとに来てくれたのね。今夜いちば�
         "閉めたあとに置いてってくれたのね。今夜の開店一番で読むわよ。"]
 
 
-def make_reply(username: str, comment: str, seed: str, used=(), late=False):
+def post_who(post_text: str) -> str:
+    """投稿が誰の誕生日を聞いたか（「アナタの誕生日を」の夜は数字だけのコメントをアナタの星座として読む）"""
+    return "me" if re.search(r"アナタの誕生日[、,を]", post_text) and "彼の誕生日" not in post_text else "him"
+
+
+def make_reply(username: str, comment: str, seed: str, used=(), late=False, who="him"):
     """(文面 or None, 読めなかった理由)"""
     rnd = random.Random(seed)
     if kinshi.needs_care(comment):
         return None, "気持ちが重い言葉あり（手で）"
-    got = read_comment(comment)
+    got = read_comment(comment, who)
     if not got:
         return None, "星座も月日も読めない"
     sign, md, who = got
@@ -214,7 +235,7 @@ def candidates(now: datetime) -> list:
                 continue
             if c["id"] in answered or c["id"] in _done or _fail.get(c["id"], 0) >= 2 or c.get("hide_status") in ("HIDDEN", "COVERED", "BLOCKED", "RESTRICTED"):
                 continue
-            out.append((c, used, _ts(c["timestamp"]) >= close or now >= close + timedelta(hours=1)))  # 次の夜に回った分
+            out.append((c, used, _ts(c["timestamp"]) >= close or now >= close + timedelta(hours=1), post_who(text)))  # 次の夜に回った分
     return sorted(out, key=lambda x: x[0]["timestamp"])
 
 
@@ -234,12 +255,12 @@ def job(rush: bool = False):
         _note(f"コメントの取得に失敗: {e}")
         return
     sent = 0
-    for c, used, late in cands:
+    for c, used, late, who in cands:
         if sent >= (20 if rush else PER_RUN):
             break
         if not rush and now < _ts(c["timestamp"]) + _delay(c["id"]):
             continue
-        text, why = make_reply(c.get("username", ""), c.get("text", ""), c["id"], used, late)
+        text, why = make_reply(c.get("username", ""), c.get("text", ""), c["id"], used, late, who)
         if text and check(text):
             text, why = None, "チェックに引っかかった " + " / ".join(check(text))
         if not text:
