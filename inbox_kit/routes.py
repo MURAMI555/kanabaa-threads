@@ -200,6 +200,12 @@ def line_webhook():
     return "ok"
 
 
+@bp.get("/line/status")
+def line_status():
+    import line_uketsuke  # 自動の声かけの様子（鍵の中身は出さない）
+    return line_uketsuke.status()
+
+
 def _on_line_event(ev: dict):
     uid = (ev.get("source") or {}).get("userId")
     if not uid or (ev.get("source") or {}).get("type") != "user":

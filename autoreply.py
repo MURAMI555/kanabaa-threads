@@ -1,9 +1,13 @@
 """叶ばぁの「置かせる」投稿へのコメントに、自然な間をあけて自動で返す（2026/10/28 みかちゃん指示・本部OK）。
 
 受付箱（inbox_kit）と違って AI もデータ置き場も使わない。返信は型から組み立てる（同じ文の使い回しにならないよう、言い回しを人ごとに選ぶ）。
-・対象：叶ばぁの直近48時間の投稿のうち「置いていきな」を含むもの（生年月日 / 出会った月 / 漢字一字）。
+・対象：叶ばぁの直近48時間の投稿のうち「置いていきな」を含むもの。
+  型：生年月日8桁（動いていい日）／出会った月／漢字一字／彼の誕生日4桁→星座の11月の癖／2人の生まれ月→噛み合わせ／
+      彼の誕生日の「日」→待たせ方の癖／最後に会ってから何日→温度／8桁＋「手放す」→この冬手放す癖（3週目 11/2〜11/8・2026/10/31 追加）
   お題の言葉に型が無い投稿でも、コメントの中身（8桁の日付・1〜12の数字・漢字）で返し方を選ぶ（10/31〜）
+・どの返信も最後に「フォローしておきな」の一言（2026/10/31 みかちゃん。閲覧6,243でフォロワーが増えなかったので）
 ・返すのは、投稿に直接ついたコメントで、まだ叶ばぁが返していないものだけ（手で返した分も API で見えるので二重にならない）
+・叶ばぁの返信にさらに返してくれた人（2往復目）にも1回だけ返す：お礼→短く／LINEに送った→届いてるよ／身の上話→受け止め＋プロフィールのリンク。重い言葉は手で（2026/11/01〜）
 ・自然な間：コメントから 15〜70分（人ごとにばらす）たってから。朝8時〜夜0時だけ。夜中のコメントは朝に返す
 ・1回（10分ごと）に2件まで、1件ごとに40〜120秒あける。コメントから48時間を過ぎたものは返さない
 ・文面は kinshi.check を通ったものだけ。読めないコメント（数字が無い等）は返さず、/autoreply に残す
@@ -53,6 +57,11 @@ TEASE = [
     "……それとね、あんたの相手のことで、ひとつ視えたものがある。責める話じゃないよ。ただ、人の目がある所で言うことじゃないね。",
     "……それとね、もうひとつ視えたものがある。悪い話じゃないよ。ただ、ここで書くには少し深いね。",
     "……それとね、あんたの周りのことで、ひとつ視えたものがある。悪い話じゃないよ。ただ、ここで書くことじゃないね。",
+]
+FOLLOW = [  # 返信の最後の一言（10/31〜。フォローの呼びかけが投稿に無く、閲覧が増えてもフォロワーが増えなかった）
+    "フォローしておきな。次の夜も、ここで視るから。",
+    "まだなら、フォローしておいておくれ。次の夜の分も、順番に視る。",
+    "フォローしておくと、次の夜の婆さんを見つけやすいよ。",
 ]
 
 HITO = {1: "自分で道を切り開く人", 2: "相手の気持ちを先に汲む人", 3: "明るさで人を惹きつける人",
@@ -113,7 +122,7 @@ def birth_reply(username: str, s: str, today: date, rnd: random.Random, used=())
     lines = [pick(HEAD, used, rnd).format(n=name_of(username)),
              f"あんたが動いていいのは、{when}。",
              f"{name}で{lp}の人は、{HITO[lp]}{rnd.choice(GOBI)}{seinen.YOUBI[d.weekday()]}曜は「{label}」の巡り。{pick(advice, used, rnd)}",
-             pick(TEASE, used, rnd)]
+             pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)]
     return "\n".join(lines)
 
 
@@ -162,7 +171,7 @@ IMA = ["今のあんたは、相手の出方を待ってるように視えるね
 
 def month_reply(username: str, m: int, rnd: random.Random, used=()) -> str:
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), pick(TSUKI[m], used, rnd),
-                      pick(IMA, used, rnd), pick(TEASE, used, rnd)])
+                      pick(IMA, used, rnd), pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
 
 
 KANJI = {  # 「今の気持ちを漢字一字で」（10/29〜）。一字ごとに2通り＝その字の読み。続けて HOSHII（欲しい言葉）
@@ -250,7 +259,180 @@ def kanji_of(comment: str):
 def kanji_reply(username: str, k: str, rnd: random.Random, used=()) -> str:
     yomi = pick(KANJI[k], used, rnd) if k in KANJI else pick(KANJI_ANY, used, rnd).format(k=k)
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), yomi,
-                      pick(HOSHII, used, rnd), pick(TEASE, used, rnd)])
+                      pick(HOSHII, used, rnd), pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+
+
+# ---------- 3週目（11/2〜11/8）の置かせ型（2026/10/31） ----------
+
+SEIZA = {  # 彼の誕生日4桁 → 星座の「11月の動き方の癖」。断定せず「〜やすい」「〜が多い」で
+    "牡羊座": ["牡羊座の男は、11月は仕事に火がついて、連絡が雑になりやすい。冷めたんじゃなく、前しか見えてないだけのことが多いよ。",
+             "牡羊座の男の11月は、動きが速いぶん、あんたの話を聞き流しやすい。短く、結論から言うと通りやすいね。"],
+    "牡牛座": ["牡牛座の男は、11月は腰が重い。急かされるほど動かない。会う日を決めるなら、先の日を一つだけ出しな。",
+             "牡牛座の男の11月は、変化を嫌う時期。いつもの店、いつもの時間に誘うと、すっと来やすいよ。"],
+    "双子座": ["双子座の男は、11月は気が散りやすい。返事が飛び飛びでも、話題が合えばすぐ戻ってくるよ。",
+             "双子座の男の11月は、口は軽いが腰は重い。言葉より、会う約束が入ったかどうかで測りな。"],
+    "蟹座": ["蟹座の男は、11月は家や身内のことで気持ちが内に向く。寂しがってるのに言わないのが癖だね。",
+            "蟹座の男の11月は、守りに入る時期。責めると殻に入る。先にこっちの弱さを一つ見せると、出てきやすいよ。"],
+    "獅子座": ["獅子座の男は、11月は褒められたい時期。張り合うより、一つ認めてやるとよく動くよ。",
+             "獅子座の男の11月は、周りの目を気にして格好をつけやすい。2人きりの時の顔だけ見ておきな。"],
+    "乙女座": ["乙女座の男は、11月は考えすぎて動けない。理屈で詰めるより、段取りを一つ軽くしてやりな。",
+             "乙女座の男の11月は、細かいことが気になる時期。返事が遅いのは、言葉を選んでるだけのことも多いよ。"],
+    "天秤座": ["天秤座の男は、11月は迷いが長い。決めかねてる時に二択を出すと、動きやすいよ。",
+             "天秤座の男の11月は、人に合わせて疲れてる。あんたの前でだけ本音が出るなら、それは悪くない位置だね。"],
+    "蠍座": ["蠍座の男は、11月は本音を深くしまう。追うと閉じる。待つより、こっちの本音を一つだけ先に置きな。",
+            "蠍座の男の11月は、黙って見てる時期。連絡が少なくても、あんたの近況は見てることが多いよ。"],
+    "射手座": ["射手座の男は、11月は外に気が向く。会えない日が増えても、気持ちが消えたとは限らないよ。",
+             "射手座の男の11月は、約束を軽く忘れる時期。怒るより、日付を一つだけ念押ししな。"],
+    "山羊座": ["山羊座の男は、11月は年末の仕事で頭がいっぱい。会う話は、日付を決めて短く言いな。",
+             "山羊座の男の11月は、責任を抱えて余裕がない。労いの一言が、口説き文句より効くよ。"],
+    "水瓶座": ["水瓶座の男は、11月は距離を取りたがる。放っておくと戻る。詰めると遠くなる癖があるね。",
+             "水瓶座の男の11月は、自分の時間を守りたい時期。会う回数より、会った時の中身で測りな。"],
+    "魚座": ["魚座の男は、11月は気持ちが揺れやすい。優しい言葉が増えた時ほど、行動のほうを見ておきな。",
+            "魚座の男の11月は、流されやすい。あんたが決めてやると、ほっとして付いてくることが多いよ。"],
+}
+
+
+def tanjobi_of(comment: str):
+    """「0314」「3/14」「3月14日」「19950314」→ (月, 日)。読めなければ None"""
+    ds = hizuke.find_dates(comment)
+    if ds:
+        return int(ds[0][4:6]), int(ds[0][6:8])
+    s = unicodedata.normalize("NFKC", comment)
+    m = re.search(r"(?<!\d)(\d{1,2})\s*[/.月\-]\s*(\d{1,2})", s)
+    if m:
+        mo, da = int(m.group(1)), int(m.group(2))
+    else:
+        m = re.search(r"(?<!\d)(\d{3,4})(?!\d)", s)
+        if not m:
+            return None
+        t = m.group(1).zfill(4)
+        mo, da = int(t[:2]), int(t[2:])
+    return (mo, da) if 1 <= mo <= 12 and 1 <= da <= 31 else None
+
+
+def seiza_reply(username: str, mo: int, da: int, rnd: random.Random, used=()) -> str:
+    name, _ = seinen.zodiac(date(2000, mo, da))
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"{mo}月{da}日なら、{name}だね。",
+                      pick(SEIZA[name], used, rnd), pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+
+
+UMARE = {1: "決めたら早い", 2: "空気を読んで合わせる", 3: "話して近づく", 4: "一歩ずつ確かめて進む", 5: "動いていないと落ち着かない",
+         6: "世話を焼いて近づく", 7: "一人の時間がないと息が詰まる", 8: "先に舵を取りたい", 9: "区切りをつけてから動く",
+         10: "相手の出方を見てから動く", 11: "勘で近づいて勘で離れる", 12: "思い出を長く抱える"}
+KAMI = {  # 2人の生まれ月の差（0／1〜2／3〜4／5〜6）→ 噛み合わせ
+    0: ["同じ月の2人は、テンポが似てる。楽なぶん、2人とも待つ側に回ると止まりやすいよ。",
+        "同じ月同士は、言わなくても分かる気になりやすい。それが甘えになると、すれ違いが長引くね。"],
+    1: ["隣り合う月の2人は、半歩のずれ。片方が少し先を歩く形だね。先を歩くほうが待てるかどうかが分かれ目だよ。",
+        "近い月の2人は、似てるようで一歩ずれてる。そのずれを責めずに面白がれると、長く続きやすいよ。"],
+    2: ["少し離れた月の2人は、違うところに惹かれ合う縁。噛み合う時はぴたっと合うけど、ずれると長引きやすい。",
+        "季節の違う月の2人は、ペースが違う。合わせるんじゃなく、どっちのペースで会うかを先に決めると楽だよ。"],
+    3: ["向かい合う月の2人は、正反対。惹かれ合う力は強いけど、連絡のテンポが合わないのが癖だね。",
+        "真向かいの月の2人は、相手に無いものを持ってる。だから惹かれるし、だから疲れる。間に一つ約束を置きな。"],
+}
+
+
+def months_of(comment: str) -> list:
+    s = unicodedata.normalize("NFKC", comment)
+    if hizuke.find_dates(s):
+        return []
+    return [int(x) for x in re.findall(r"(?<!\d)(\d{1,2})(?!\d)", s) if 1 <= int(x) <= 12][:2]
+
+
+def pair_reply(username: str, a: int, b: int, rnd: random.Random, used=()) -> str:
+    d = abs(a - b)
+    d = min(d, 12 - d)
+    key = 0 if d == 0 else 1 if d <= 2 else 2 if d <= 4 else 3
+    hito = (f"2人とも{a}月生まれ。{UMARE[a]}人同士{rnd.choice(GOBI)}" if a == b
+            else f"{a}月生まれは{UMARE[a]}人。{b}月生まれは{UMARE[b]}人{rnd.choice(GOBI)}")
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), hito,
+                      pick(KAMI[key], used, rnd), pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+
+
+def month_only_reply(username: str, a: int, rnd: random.Random, used=()) -> str:
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"{a}月生まれは、{UMARE[a]}人だよ。",
+                      "彼の生まれ月も分かったら、2つ並べてもう一度置いておくれ。噛み合わせまで視る。", pick(FOLLOW, used, rnd)])
+
+
+MATASE = {  # 彼の誕生日の「日」を1桁（11・22は残す）にした数 → 待たせ方の癖
+    1: "1の日に生まれた男は、待たせてる自覚がない。自分の用事が先に来る人だよ。",
+    2: "2の日に生まれた男は、返事を考えすぎて遅くなる。遅いが、来ると丁寧だね。",
+    3: "3の日に生まれた男は、気分で返す。早い日と遅い日の差が大きいよ。",
+    4: "4の日に生まれた男は、決めた順番を崩さない。待たせるけど、約束は守る人だよ。",
+    5: "5の日に生まれた男は、目の前のことに流される。返事が遅いのは、忘れてるだけのことも多いね。",
+    6: "6の日に生まれた男は、人の世話で手いっぱいになる。待たせてる相手が、あんただけじゃないこともあるね。",
+    7: "7の日に生まれた男は、一人で考え込んでから返す。沈黙は、冷めたとは限らないよ。",
+    8: "8の日に生まれた男は、仕事を先に片づけてから返す。順番は後ろでも、本気じゃないわけじゃないよ。",
+    9: "9の日に生まれた男は、気を遣って返事を選びすぎる。遅いのは、傷つけたくないからのことが多いね。",
+    11: "11の日に生まれた男は、勘で動く。返事がある日とない日が、はっきり分かれるよ。",
+    22: "22の日に生まれた男は、背負ってるものが多い。待たせる時は、たいてい何かを抱えてるね。",
+}
+MATASE_TE = ["待つなら、次に会う日だけ先に聞いておきな。", "返事を待つ間に、あんたの予定を一つ入れておきな。",
+             "催促するなら、質問は一つに絞りな。", "待ってる、とは言っていい。何度も言わなければ重くならないよ。"]
+
+
+def day_of(comment: str):
+    ds = hizuke.find_dates(comment)
+    if ds:
+        return int(ds[0][6:8])
+    s = unicodedata.normalize("NFKC", comment)
+    m = re.search(r"(?<!\d)(\d{1,2})(?!\d)", s)
+    return int(m.group(1)) if m and 1 <= int(m.group(1)) <= 31 else None
+
+
+def day_reply(username: str, d: int, rnd: random.Random, used=()) -> str:
+    n = d
+    while n > 9 and n not in (11, 22):
+        n = sum(int(c) for c in str(n))
+    head = f"{d}日生まれ。数にすると{n}だね。" if n != d else f"{d}日生まれだね。"
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), head + MATASE[n], pick(MATASE_TE, used, rnd),
+                      pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+
+
+ONDO = [  # 最後に会ってからの日数 → 温度（上限日数, 文2通り）
+    (7, ["7日のうちなら、まだ温かいよ。今は追わずに、次の約束だけ軽く置いておく時期だね。",
+         "1週間以内なら、湯気がまだ立ってる。追い焚きはいらない。こっちの予定を一つ入れて待ちな。"]),
+    (30, ["1か月のうちは、ぬるくなりかけ。こっちから一度、短い一通を入れてもいい頃だね。",
+          "数週間あくと、温度は下がり始めてる。長い文じゃなく、用事のある短い一通が通りやすいよ。"]),
+    (90, ["3か月まで来ると、冷めたんじゃなく、置かれてる。動くなら、用事を一つ作ってからだよ。",
+          "季節が一つ変わる間、会ってないね。向こうの中で順番が下がってる気配がある。追うより、自分の近況を一つ変えな。"]),
+    (365, ["1年近くなると、相手の中で季節が変わってる。戻すんじゃなく、新しく始めるつもりで一通だよ。",
+           "半年を越えた縁は、懐かしさで返事が来ることがある。それを今の温度と間違えないでおくれ。"]),
+    (10 ** 9, ["1年を越えた縁は、思い出のほうが温かい。会うなら、昔の2人じゃなく今の2人として会いな。",
+               "1年以上たってるね。向こうの暮らしは、もう別の形になってるかもしれない。確かめてから、期待しな。"]),
+]
+
+
+def days_of(comment: str):
+    s = unicodedata.normalize("NFKC", comment)
+    if hizuke.find_dates(s):
+        return None
+    m = re.search(r"(?<!\d)(\d{1,5})(?!\d)", s)
+    return int(m.group(1)) if m else None
+
+
+def days_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
+    band = next(t for lim, t in ONDO if n <= lim)
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"最後に会ってから{n}日。" + pick(band, used, rnd),
+                      pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+
+
+TEBANASU = {  # 生年月日→あんたの数 → この冬手放すといい癖
+    1: "先に全部決めてしまう癖", 2: "相手の顔色を先に読む癖", 3: "明るく振る舞って本音を隠す癖",
+    4: "約束を守りすぎて自分を後回しにする癖", 5: "飽きたふりをして逃げる癖", 6: "世話を焼いて好かれようとする癖",
+    7: "一人で抱えて黙る癖", 8: "結果を急いで相手を試す癖", 9: "尽くして自分をすり減らす癖",
+    11: "勘で分かった気になって確かめない癖", 22: "全部自分の責任にする癖", 33: "甘えるのが下手で強がる癖",
+}
+TEBANASU_TE = ["全部やめなくていい。今週、1回だけやらずにいてみな。",
+               "やめ方は簡単だよ。その癖が出そうな時に、ひと呼吸おいてから動きな。",
+               "癖は悪者じゃない。あんたを守ってきたものだ。でも、この冬は少し休ませてやりな。"]
+
+
+def tebanasu_reply(username: str, s: str, rnd: random.Random, used=()) -> str:
+    name, _ = seinen.zodiac(date(int(s[:4]), int(s[4:6]), int(s[6:8])))
+    lp = seinen.life_path(s)
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)),
+                      f"{name}で{lp}の人がこの冬手放すといいのは、「{TEBANASU[lp]}」だよ。", pick(TEBANASU_TE, used, rnd),
+                      pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
 
 
 def make_reply(username: str, comment: str, post_text: str, today: date, seed: str, used=()):
@@ -258,6 +440,23 @@ def make_reply(username: str, comment: str, post_text: str, today: date, seed: s
     rnd = random.Random(seed)
     if kinshi.needs_care(comment):
         return None, "気持ちが重い言葉あり（手で）"
+    if "手放す" in post_text:  # 11/7 自分の8桁 → この冬手放す癖
+        ds = hizuke.find_dates(comment)
+        return (tebanasu_reply(username, ds[0], rnd, used), "") if ds else (None, "生年月日が読めない")
+    if "4桁" in post_text and "誕生日" in post_text:  # 11/2 彼の誕生日4桁 → 星座の11月
+        t = tanjobi_of(comment)
+        return (seiza_reply(username, t[0], t[1], rnd, used), "") if t else (None, "誕生日が読めない")
+    if "生まれた月" in post_text:  # 11/3 2人の生まれ月 → 噛み合わせ
+        nums = months_of(comment)
+        if len(nums) >= 2:
+            return pair_reply(username, nums[0], nums[1], rnd, used), ""
+        return (month_only_reply(username, nums[0], rnd, used), "") if nums else (None, "月が読めない")
+    if "誕生日の「日」" in post_text or "月はいらない" in post_text:  # 11/5 彼の誕生日の日 → 待たせ方の癖
+        d = day_of(comment)
+        return (day_reply(username, d, rnd, used), "") if d else (None, "日が読めない")
+    if "何日か" in post_text or "日数" in post_text:  # 11/6 最後に会ってからの日数 → 温度
+        n = days_of(comment)
+        return (days_reply(username, n, rnd, used), "") if n is not None else (None, "日数が読めない")
     if "生年月日" in post_text:
         ds = hizuke.find_dates(comment)
         return (birth_reply(username, ds[0], today, rnd, used), "") if ds else (None, "生年月日が読めない")
@@ -292,6 +491,59 @@ def by_content(username: str, comment: str, post_text: str, today: date, rnd: ra
     return None, "読めないコメント（手で）"
 
 
+# ---------- 2往復目（叶ばぁの返信に、さらに返してくれた人・2026/11/01 みかちゃん「完璧じゃない」） ----------
+# 「ありがとうございます」「LINEに送りました」「実は今…」の返事が放置されていた。1人1回だけ返す（往復を続けない）
+
+SOTCHI_RE = re.compile(r"LINE|ライン|らいん|メッセ|送りました|送らせて|投稿させて|登録しました|友だち追加")
+THANKS_RE = re.compile(r"ありがと|有難|有り難|嬉し|うれし|当たって|あたって|頑張|がんば|楽しみ|心強|救われ|泣|感謝|励み")
+THANKS = [
+    "{n}さん、こっちこそありがとね。今週は、自分を急かさんでいいよ。",
+    "{n}さん、届いてよかった。焦らんでいいからね。あんたの順番は、ちゃんと来るよ。",
+    "どういたしまして、{n}さん。また夜に、ここで待ってるでね。",
+    "{n}さん、そう言ってもらえると婆さんも嬉しいよ。今夜は、あったかくして寝な。",
+]
+SOTCHI = [
+    "{n}さん、そっちにも届いてるよ。一人ずつ順番に視るでね、少し待っておくれ。",
+    "{n}さん、ちゃんと受け取ってるよ。急がずに視るから、ゆっくり待っててね。",
+    "{n}さん、届いてるよ、ありがとね。順番が来たら、婆さんから声をかけるでね。",
+]
+STORY_HEAD = ["{n}さん、話してくれてありがとね。", "{n}さん、聞かせてくれてありがとね。"]
+STORY_UKE = [
+    "そういう時は、相手のことより先に、あんたの心が疲れてないかを見てやりな。",
+    "待つ時間が長いと、自分ばっかり悪いように思えてくるもんだ。そうとは限らないよ。",
+    "言葉にできただけで、もう一歩は進んでる。婆さんはそう視るよ。",
+    "一人で抱えてきたんだね。ここまで、よく持ちこたえた。",
+]
+STORY_END = [
+    "込み入った話は、表で書くより、ゆっくり視たほうがいい。気になったらプロフィールのリンクからおいで。",
+    "続きは、人の目がない所で視てやりたい話だね。プロフィールのリンクから、いつでもおいで。",
+    "ここで全部は書けないけど、あんたの話はちゃんと覚えておくよ。続きはプロフィールのリンクからね。",
+]
+SHORT = [
+    "{n}さん、読んでくれてありがとね。思い当たることがあったなら、それで十分だよ。",
+    "{n}さん、そうかい。自分で気づけてるなら、もう半分は変われてるよ。",
+]
+
+
+def second_reply(username: str, comment: str, seed: str, used=()):
+    """(文面 or None, 理由)。叶ばぁの返信への返事"""
+    rnd = random.Random("2" + seed)
+    n = name_of(username)
+    if kinshi.needs_care(comment):
+        return None, "気持ちが重い言葉あり（手で）"
+    s = re.sub(r"\s", "", unicodedata.normalize("NFKC", comment or ""))
+    if not s:
+        return None, "中身が無い（スタンプだけ等）"
+    if SOTCHI_RE.search(s):
+        return pick(SOTCHI, used, rnd).format(n=n), ""
+    if len(s) <= 40 and THANKS_RE.search(s):
+        return pick(THANKS, used, rnd).format(n=n), ""
+    if len(s) >= 10:
+        return "\n".join([pick(STORY_HEAD, used, rnd).format(n=n), pick(STORY_UKE, used, rnd),
+                          pick(STORY_END, used, rnd)]), ""
+    return pick(SHORT, used, rnd).format(n=n), ""
+
+
 # ---------- 回す ----------
 
 def _ts(s: str) -> datetime:
@@ -303,23 +555,40 @@ def _delay(cid: str) -> timedelta:
 
 
 def candidates(now: datetime) -> list:
-    """返す候補 [(コメント, 投稿の文, その投稿で叶ばぁが返した文のリスト)]。古い順"""
+    """返す候補 [(コメント, 投稿の文, その投稿で叶ばぁが返した文のリスト, 2往復目か)]。古い順
+    2往復目＝叶ばぁの返信にさらに返してくれたもの。その人の2往復目に一度返したら、そこで止める（往復を続けない）"""
     out = []
     for p in threads_api.my_posts(limit=25, account=ACCOUNT):
         text = p.get("text") or ""
         if not OKASE.search(text) or now - _ts(p["timestamp"]) > timedelta(hours=48):
             continue
         conv = threads_api.conversation(p["id"], account=ACCOUNT)
-        answered = {(c.get("replied_to") or {}).get("id") for c in conv if c.get("is_reply_owned_by_me")}
-        used = [c.get("text") or "" for c in conv if c.get("is_reply_owned_by_me")]
+        mine = {c["id"]: c for c in conv if c.get("is_reply_owned_by_me")}
+        byid = {c["id"]: c for c in conv}
+        answered = {(c.get("replied_to") or {}).get("id") for c in mine.values()}
+        used = [c.get("text") or "" for c in mine.values()]
+        # 2往復目にもう返した人（叶ばぁの返信の宛先が、投稿への直のコメントでない＝2往復目）
+        second_done = set()
+        for m in mine.values():
+            to = byid.get((m.get("replied_to") or {}).get("id")) or {}
+            if (to.get("replied_to") or {}).get("id") not in (None, p["id"]):
+                second_done.add(to.get("username"))
         for c in conv:
-            if c.get("is_reply_owned_by_me") or (c.get("replied_to") or {}).get("id") != p["id"]:
+            parent = (c.get("replied_to") or {}).get("id")
+            if c.get("is_reply_owned_by_me"):
+                continue
+            second = parent in mine
+            if parent != p["id"] and not second:
+                continue
+            if second and c.get("username") in second_done:
                 continue
             if c["id"] in answered or c["id"] in _done or _fail.get(c["id"], 0) >= 2 or c.get("hide_status") in ("HIDDEN", "COVERED", "BLOCKED", "RESTRICTED"):
                 continue
             if now - _ts(c["timestamp"]) > timedelta(hours=48):
                 continue
-            out.append((c, text, used))
+            out.append((c, text, used, second))
+            if second:
+                second_done.add(c.get("username"))  # 同じ人が続けて2つ書いても、返すのは1つ
     return sorted(out, key=lambda x: x[0]["timestamp"])
 
 
@@ -336,12 +605,15 @@ def job(rush: bool = False):
         _note(f"コメントの取得に失敗: {e}")
         return
     sent = 0
-    for c, post_text, used in cands:
+    for c, post_text, used, second in cands:
         if sent >= (20 if rush else PER_RUN):
             break
         if not rush and now < _ts(c["timestamp"]) + _delay(c["id"]):
             continue
-        text, why = make_reply(c.get("username", ""), c.get("text", ""), post_text, now.date(), c["id"], used)
+        if second:
+            text, why = second_reply(c.get("username", ""), c.get("text", ""), c["id"], used)
+        else:
+            text, why = make_reply(c.get("username", ""), c.get("text", ""), post_text, now.date(), c["id"], used)
         if text and kinshi.check(text):
             text, why = None, "チェックに引っかかった " + " / ".join(kinshi.check(text))
         if not text:
@@ -376,8 +648,10 @@ def peek() -> str:
         for c in conv[:40]:
             out.append(f"  @{c.get('username')} {c.get('timestamp')} 自分={c.get('is_reply_owned_by_me')} "
                        f"親={(c.get('replied_to') or {}).get('id')} 隠={c.get('hide_status')} {(c.get('text') or '')[:15]}")
-    ids = [c['id'] for c, _, _ in candidates(now)]
-    return "\n".join(out) + f"\n\n候補 {len(ids)}件"
+    cands = candidates(now)
+    out.append(f"\n候補 {len(cands)}件（うち2往復目 {sum(1 for x in cands if x[3])}件）")
+    out += [f"  {'2往復目' if s else '1往復目'} @{c.get('username')} {(c.get('text') or '')[:20]}" for c, _, _, s in cands]
+    return "\n".join(out)
 
 
 @bp.get("/autoreply")
