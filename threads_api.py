@@ -93,11 +93,20 @@ def my_posts(limit: int = 25, account: str = DEFAULT) -> list:
 
 def conversation(media_id: str, account: str = DEFAULT) -> list:
     """投稿についた返信ぜんぶ（ツリーの下まで）。受付箱が生年月日コメントを拾うのに使う。読むだけ"""
-    r = requests.get(f"{BASE}/{media_id}/conversation", params={
-        "fields": "id,text,username,timestamp,permalink,replied_to,is_reply_owned_by_me,hide_status",
-        "reverse": "false", "limit": 100, "access_token": token(account)}, timeout=30)
-    r.raise_for_status()
-    return r.json().get("data", [])
+    # 2026/11/03 100件で切れていて、101件目より後の「叶ばぁがもう返した」が見えず二重に返していた → ページを全部たどる
+    params = {"fields": "id,text,username,timestamp,permalink,replied_to,is_reply_owned_by_me,hide_status",
+              "reverse": "false", "limit": 100, "access_token": token(account)}
+    out, url = [], f"{BASE}/{media_id}/conversation"
+    for _ in range(20):  # 2,000件まで
+        r = requests.get(url, params=params, timeout=30)
+        r.raise_for_status()
+        j = r.json()
+        out += j.get("data", [])
+        after = (j.get("paging") or {}).get("cursors", {}).get("after")
+        if not after or not j.get("data") or not (j.get("paging") or {}).get("next"):
+            break
+        params["after"] = after
+    return out
 
 
 def publishing_limit(account: str = DEFAULT) -> dict:
