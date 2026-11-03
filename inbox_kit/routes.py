@@ -286,6 +286,16 @@ def job():
     if not _job_lock.acquire(blocking=False):
         return
     try:
+        import hatsumi_auto  # LINE の初視の自動（③翌朝・④夕方・初視・⑦⑧）。11/03〜
+        try:
+            hatsumi_auto.tick()
+        except Exception as e:  # noqa: BLE001
+            traceback.print_exc()
+            note(f"初視の自動で失敗: {e}")
+        # 2026/11/03〜 Threads の返信は autoreply.py、LINE の初視は hatsumi_auto.py が受け持つ。
+        # ここの古い下書き・返信を動かすと二重になるので、INBOX_OLD_JOBS=1 の時だけ（ふだんはメッセージを貯めるだけ）
+        if os.environ.get("INBOX_OLD_JOBS") != "1":
+            return
         for f in (collect_threads, draft_threads, send_threads, draft_line):
             try:
                 f()
@@ -415,3 +425,13 @@ def inbox_log():
         abort(401)
     return {"log": _log[-50:], "store": ready(), "ai": drafts.configured(),
             "line": bool(os.environ.get("LINE_CHANNEL_SECRET"))}
+
+
+def _hatsumi_routes():
+    import hatsumi_auto  # 画面 /hatsumi（初視の自動の予定・止める・直す）
+    bp.add_url_rule("/hatsumi", "hatsumi_page", hatsumi_auto.page)
+    bp.add_url_rule("/hatsumi/act", "hatsumi_act", hatsumi_auto.act, methods=["POST"])
+    bp.add_url_rule("/hatsumi/status", "hatsumi_status", hatsumi_auto.status)
+
+
+_hatsumi_routes()

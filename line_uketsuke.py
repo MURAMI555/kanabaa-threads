@@ -1,8 +1,8 @@
 """叶ばぁの公式LINE（@492vxwcy）の自動の声かけ（2026/10/31〜・11/01 広げた）。
 
 ・4項目（名前・生年月日・悩み・願い）が届いたら
-    8〜12分後に 定型文①受付（名前入り・読み物のリンク）
-    さらに40〜70分後に 定型文②読んだかい（夜23時〜朝8時にかかる時は送らない）
+    8〜12分後に 定型文①受付（名前入り・読み物のリンク）だけ送る
+    （②読んだかい は 11/03 やめた。みかちゃん「同じような連絡を2回送ってる・連投いらない」）
   （2026/10/31 みかちゃん「届いたよは自動で10分後くらいに」→ 11/01「ライン登録してくれた人も自動で返して」）
 ・友だち追加したのに4項目が来ない人には、20〜26時間後に1回だけ「4つ書いて送っておくれ」（朝8時〜夜22時のあいだに）
 ・初視（無料鑑定書）・③翌朝・④夕方からあとは今までどおり手で送る（③④は「今夜届ける」と約束する文なので、
@@ -32,10 +32,6 @@ UKETSUKE = ("{n}ちゃんと届いたよ。ありがとね。\n\n"
             "その前に、ひとつだけ読んでおいてほしいもんがある。\n"
             "婆さんがどんな人間で、初視をどう受け取ってほしいかを書いておいた。\n\n"
             "最後まで読んでから初視を開くと、書いてあることがすっと入るでね。\n\n" + YOMIMONO)
-YONDA = ("{n}さっき送ったの、読めたかい。\n\n"
-         "あれは誰にでも送ってる案内じゃないよ。\n"
-         "初視を待ってるあんたに、先に渡しておきたかったんだ。\n\n"
-         "まだなら、寝る前でいいから最後まで読んでおくれ。\n▼\n" + YOMIMONO)
 UNAGASHI = ("{n}友だちになってくれて、ありがとね。\n\n"
             "初視は、あんたのことを4つ聞いてから視るよ。\n"
             "――――――――――\n"
@@ -99,12 +95,6 @@ def _hearing_flow(uid: str, wait: int):
         if not enabled() or not _send(uid, UKETSUKE, "①受付"):
             return
         _sent[uid] = datetime.now(JST)
-        time.sleep(random.randint(40 * 60, 70 * 60))
-        h = datetime.now(JST).hour
-        if enabled() and 8 <= h < 23:
-            _send(uid, YONDA, "②読んだかい")
-        else:
-            _note(f"{uid[-6:]} の「②読んだかい」は夜遅いので送らなかった")
     finally:
         _wait.discard(uid)
 
@@ -137,6 +127,11 @@ def on_event(ev: dict):
     if not looks_like_hearing(ev["message"].get("text", "")):
         return
     _hearing.add(uid)
+    try:  # 続きの③翌朝・④夕方・初視・⑦⑧は hatsumi_auto（11/03〜。予定はシートに置くので再起動しても続く）
+        import hatsumi_auto
+        hatsumi_auto.start(uid)
+    except Exception as e:  # noqa: BLE001
+        _note(f"{uid[-6:]} の初視の流れを始められなかった: {e}")
     if uid in _wait or (uid in _sent and datetime.now(JST) - _sent[uid] < AGAIN):
         return
     wait = random.randint(8 * 60, 12 * 60)
@@ -151,4 +146,4 @@ def status():
     secret = "あり" if os.environ.get("LINE_CHANNEL_SECRET") else "無し（Webhookが受け取れない）"
     rows = "\n".join(reversed(_log)) or "（まだ何も来ていない）"
     return (f"<pre style='white-space:pre-wrap;font-size:13px'>叶ばぁLINE 自動の声かけ：{state}\nチャネルシークレット：{secret}\n"
-            f"4項目→約10分後に①受付→約1時間後に②読んだかい／友だち追加だけの人→約1日後に1回\n\n{rows}</pre>")
+            f"4項目→約10分後に①受付（1通だけ）／友だち追加だけの人→約1日後に1回\n\n{rows}</pre>")
