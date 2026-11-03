@@ -8,9 +8,10 @@
     D  8時台   ③翌朝「眠れたかい・今夜届ける」
     D 17時台   ④夕方「もう少しで届けられるよ」
     D 21時台   初視（4,980円は D+8 の24時まで・?d=D）
-    D+3 21時台 ⑦迷う人へ（初視のあとに返事が来ていたら送らない）
+    D+1 21時台 ⑥視直し（11/03 まりの翌日の一通を叶ばぁ口調に。霊視メモは要らない形）
+    D+2 21時台 ⑦迷う人へ（11/03 まりの2通目を移した。「昨日の案内」とつながるので⑥の翌日）（⑥〜⑧とも、初視のあとに返事が来ていたら送らない）
+    D+3 21時台 ⑦の2 違い（11/03 まりの3通目。初視と本鑑定の違い）
     D+7 21時台 ⑧前の日（同じ）
-  ⑥視直しは霊視メモが要るので自動にしない（返事が無い人だけ、手で）
 ・初視がチェックに引っかかった・書けなかった時は「保留」。③④も初視も送らず、みかちゃんに知らせる
 ・止める：/hatsumi?pin=…（受付箱と同じ合言葉）の「止める」。全部止めるのは Render の KANABAA_HATSUMI_AUTO=0
 ・型（スキルの kata.md など）は公開リポに置けないので、受付箱シートの cfg:hatsumi に置く
@@ -37,7 +38,7 @@ _log: list = []
 
 PER_DAY = 3                      # 1日に送る初視の数（全アカウント合計3件までの決まり。叶ばぁはここで守る）
 GATHER = timedelta(minutes=30)   # 最後のメッセージからこれだけ待って書く
-LATE = {"asa": 3, "yu": 3, "hatsumi": 2, "mayou": 3, "mae": 3}  # 予定から何時間遅れまでなら送るか（再起動で遅れた時）
+LATE = {"asa": 3, "yu": 3, "hatsumi": 2, "minaoshi": 3, "mayou": 3, "chigai": 3, "mae": 3}  # 予定から何時間遅れまでなら送るか（再起動で遅れた時）
 PAGE = "https://kanabaa-hatsumi.netlify.app/honkantei/?d={d}"
 PAY_LIMITED = "https://kanabaa.stores.jp/items/6ae1ff617851cfc94d4f3d59"   # 4,980円
 SITE = "https://kanabaa-threads.onrender.com"
@@ -49,18 +50,153 @@ YU = ("{n}さん、もう少しで届けられるよ。\n\n"
       "視えたことを、今夜ちゃんと書いて送るでね。\n"
       "同じ言葉でも、落ち着いて読むのと、仕事の合間に読むのとでは届き方が違う。\n"
       "一人になれる時間に開いておくれ。")
-MAYOU = ("{n}さん\n\nここで迷う人は、ほんとに多いよ。\n「今じゃなくてもいいかな」\n「初視だけで十分かな」\n"
-         "「あたしが受けていいのかな」\n\nそう止まるのも、当たり前だがね。\n"
-         "でもね、やさしい人ほど、自分のことを後回しにする。\n"
-         "人の気持ちは大事にできるのに、自分の本音だけ聞こえないふりをしちまう。\n\n"
-         "本鑑定は、あんたが自分の気持ちを置いてけぼりにしないためのもんだよ。\n"
-         "4,980円で受けられるのは、あと5日。\n▼\n" + PAGE)
+MINAOSHI = ("{n}さん\n"
+            "\n"
+            "初視、\n"
+            "ちゃんと\n"
+            "受け取れたかい。\n"
+            "\n"
+            "あそこに書いたのは、\n"
+            "今のあんたに\n"
+            "届いてる\n"
+            "最初のしるしだよ。\n"
+            "\n"
+            "でも、\n"
+            "正直に言うね。\n"
+            "\n"
+            "初視だけで\n"
+            "安心して終わると、\n"
+            "また同じところで\n"
+            "不安になる人も\n"
+            "多いんだ。\n"
+            "\n"
+            "それは\n"
+            "弱いからじゃないよ。\n"
+            "\n"
+            "まだ、\n"
+            "流れが止まってる\n"
+            "根っこのところまで\n"
+            "視にいけていない\n"
+            "だけでね。\n"
+            "\n"
+            "本鑑定では、\n"
+            "\n"
+            "なぜ同じ悩みに\n"
+            "戻ってくるのか。\n"
+            "\n"
+            "どの縁や\n"
+            "思い込みを\n"
+            "ほどいていく必要が\n"
+            "あるのか。\n"
+            "\n"
+            "今いちばん\n"
+            "受け取っておくべき\n"
+            "言葉は何か。\n"
+            "\n"
+            "そこまで\n"
+            "深く視ていくでね。\n"
+            "\n"
+            "初視と本鑑定の違いは、\n"
+            "ここに\n"
+            "まとめておいた。\n"
+            "▼\n" + PAGE)
+MAYOU = ("{n}さん\n"
+         "\n"
+         "昨日の案内、\n"
+         "少しでも\n"
+         "見てくれたかい。\n"
+         "\n"
+         "ここで迷う人は、\n"
+         "ほんとに多いよ。\n"
+         "\n"
+         "「今じゃなくても\n"
+         "いいかな」\n"
+         "\n"
+         "「初視だけでも\n"
+         "十分かな」\n"
+         "\n"
+         "「あたしが受けて\n"
+         "いいのかな」\n"
+         "\n"
+         "そんなふうに\n"
+         "止まるのも\n"
+         "当たり前のことだがね。\n"
+         "\n"
+         "でもね、\n"
+         "やさしい人ほど\n"
+         "自分のことを\n"
+         "後回しにする。\n"
+         "\n"
+         "人の気持ちは\n"
+         "大事にできるのに、\n"
+         "自分の本音だけは\n"
+         "聞こえないふりを\n"
+         "しちまう。\n"
+         "\n"
+         "本鑑定は、\n"
+         "あんたが\n"
+         "自分の気持ちを\n"
+         "置いてけぼりにしない\n"
+         "ためのもんだよ。\n"
+         "\n"
+         "詳しいページには、\n"
+         "初視と本鑑定の違い、\n"
+         "迷ってるあんたへの話、\n"
+         "受け取るまでの流れまで\n"
+         "まとめておいた。\n"
+         "▼\n" + PAGE)
+CHIGAI = ("{n}さん\n"
+          "\n"
+          "今日は、\n"
+          "初視と\n"
+          "本鑑定の違いを\n"
+          "ちゃんと伝えるね。\n"
+          "\n"
+          "初視は、\n"
+          "今いちばん\n"
+          "表に出てる\n"
+          "しるしを視るもの。\n"
+          "\n"
+          "本鑑定は、\n"
+          "その奥にある\n"
+          "根っこまで視る。\n"
+          "\n"
+          "なぜ同じ悩みを\n"
+          "繰り返すのか。\n"
+          "\n"
+          "どの縁が\n"
+          "{n}さんの流れを\n"
+          "止めてるのか。\n"
+          "\n"
+          "何を整えると、\n"
+          "流れが戻りはじめるのか。\n"
+          "\n"
+          "今いちばん\n"
+          "受け取っておくべき\n"
+          "言葉は何か。\n"
+          "\n"
+          "ここまで視るから、\n"
+          "「当たってた」で\n"
+          "終わらずに、\n"
+          "ここからどう動くか\n"
+          "まで受け取れるんだよ。\n"
+          "\n"
+          "詳しいことは\n"
+          "案内のページに\n"
+          "まとめておいた。\n"
+          "\n"
+          "あんたが\n"
+          "今どこまで\n"
+          "視てほしいか、\n"
+          "読んで感じてみな。\n"
+          "▼\n" + PAGE)
 MAE = ("{n}さん、婆さんからはこれで最後にするね。\n\n"
        "初視から8日間の4,980円は、明日の24時までだよ。\nそのあとも受けられるけど、25,000円になる。\n\n"
        "暮らしを削ってまで受けるもんじゃないから、今じゃないと思ったら、それでいい。\n"
        "初視に書いたことは本当のことだから、何度でも読み返しな。\n▼\n" + PAGE)
-STAGES = [("asa", "③翌朝"), ("yu", "④夕方"), ("hatsumi", "初視"), ("mayou", "⑦迷う人へ"), ("mae", "⑧前の日")]
+STAGES = [("asa", "③翌朝"), ("yu", "④夕方"), ("hatsumi", "初視"), ("minaoshi", "⑥視直し"), ("mayou", "⑦迷う人へ"), ("chigai", "⑦の2違い"), ("mae", "⑧前の日")]
 NAME = dict(STAGES)
+FOLLOW = ("minaoshi", "mayou", "chigai", "mae")  # 初視のあとのフォロー（返事が来たら全部止める）
 
 RULE = """公式LINEに届いた相談に、叶ばぁの「初視（はつみ）」＝無料鑑定書を1通だけ書く。
 下に渡す「型」（運用者のスキル・鑑定書の段の型・見本）のとおりに書く。型と口調の決まりがぶつかったら型が勝つ。
@@ -155,7 +291,9 @@ def _plan(it: dict, items: dict) -> dict:
     while counts.get(day.isoformat(), 0) >= PER_DAY:
         day += timedelta(days=1)
     return {"asa": _at(day, 8, 0, 8, 59), "yu": _at(day, 17, 0, 17, 59), "hatsumi": _at(day, 21, 0, 21, 40),
-            "mayou": _at(day + timedelta(days=3), 21, 0, 21, 30), "mae": _at(day + timedelta(days=7), 21, 0, 21, 30),
+            "minaoshi": _at(day + timedelta(days=1), 21, 0, 21, 30),
+            "mayou": _at(day + timedelta(days=2), 21, 0, 21, 30),
+            "chigai": _at(day + timedelta(days=3), 21, 0, 21, 30), "mae": _at(day + timedelta(days=7), 21, 0, 21, 30),
             "d": day.strftime("%Y%m%d")}
 
 
@@ -287,16 +425,16 @@ def _step(it, a, items, now):
     for key, label in STAGES:
         if not _due(it, key, now):
             continue
-        if key in ("mayou", "mae") and "hatsumi" not in a["sent"]:
+        if key in FOLLOW and "hatsumi" not in a["sent"]:
             a.setdefault("skipped", {})[key] = "初視を自動で送っていない"
             continue
-        if key in ("mayou", "mae") and _replied_after(it, a["sent"]["hatsumi"]):
-            for k in ("mayou", "mae"):
+        if key in FOLLOW and _replied_after(it, a["sent"]["hatsumi"]):
+            for k in FOLLOW:
                 a.setdefault("skipped", {})[k] = "返事が来た"
-            tell_mika(f"【叶ばぁ】{a['name']}さんから初視のあとに返事が来てるよ。⑦⑧の自動は止めたから、返事は手でね\nhttps://chat.line.biz/")
+            tell_mika(f"【叶ばぁ】{a['name']}さんから初視のあとに返事が来てるよ。⑥〜⑧の自動は止めたから、返事は手でね\nhttps://chat.line.biz/")
             break
         n = a["name"]
-        text = {"asa": ASA, "yu": YU, "mayou": MAYOU, "mae": MAE}.get(key, "").format(n=n, d=a["plan"]["d"]) \
+        text = {"asa": ASA, "yu": YU, "minaoshi": MINAOSHI, "mayou": MAYOU, "chigai": CHIGAI, "mae": MAE}.get(key, "").format(n=n, d=a["plan"]["d"]) \
             if key != "hatsumi" else a["draft"]
         try:
             _push(it["id"][5:], text)
@@ -308,7 +446,7 @@ def _step(it, a, items, now):
                 tell_mika(f"【叶ばぁ】{n}さんへの初視の自動送信に失敗した（{str(e)[:80]}）。手で送ってね")
                 a.setdefault("skipped", {})["hatsumi"] = "失敗"
         break  # 1回の見回りで1人1通まで
-    if all(k in a["sent"] or k in a.get("skipped", {}) for k, _ in STAGES):
+    if all(k in a["sent"] or k in a.get("skipped", {}) or k not in a["plan"] for k, _ in STAGES):  # ⑥を足す前の予定には minaoshi が無い
         a["state"] = "done"
     store.put(it)
 
