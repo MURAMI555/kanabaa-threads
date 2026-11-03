@@ -514,6 +514,13 @@ STORY_END = [
     "続きは、人の目がない所で視てやりたい話だね。プロフィールのリンクから、いつでもおいで。",
     "ここで全部は書けないけど、あんたの話はちゃんと覚えておくよ。続きはプロフィールのリンクからね。",
 ]
+# 「続き気になります。どこで聞けますか？」＝いちばん熱い人。待たせずに LINE へ案内する（2026/11/03 みかちゃん「すぐに返信してほしい」）
+ZOKU_RE = re.compile(r"どこ|行け|いけま|どうやって|どうすれば|聞けま|聞きたい|知りたい|続き|つづき|気になり|気になる|詳しく|くわしく|教えて|おしえて|視てほし|みてほし|占って|鑑定")
+ZOKU = [
+    "{n}さん、気にしてくれてありがとね。続きは表では書けないから、プロフィールのリンクから公式LINEにおいで。生年月日と今の悩みを送ってくれたら、ちゃんと視て返すよ。",
+    "{n}さん、そこは人の目のない所で話したいとこだよ。プロフィールのリンクから公式LINEにおいで。4つだけ書いて送ってくれたら、ちゃんと視るでね。",
+    "{n}さん、待ってたよ。続きはプロフィールのリンクの公式LINEで渡すね。生年月日と悩みを送っておくれ。",
+]
 SHORT = [
     "{n}さん、読んでくれてありがとね。思い当たることがあったなら、それで十分だよ。",
     "{n}さん、そうかい。自分で気づけてるなら、もう半分は変われてるよ。",
@@ -529,6 +536,8 @@ def second_reply(username: str, comment: str, seed: str, used=()):
     s = re.sub(r"\s", "", unicodedata.normalize("NFKC", comment or ""))
     if not s:
         return None, "中身が無い（スタンプだけ等）"
+    if ZOKU_RE.search(s) and not re.search(r"送りました|送らせて|登録しました|追加しました", s):
+        return pick(ZOKU, used, rnd).format(n=n), ""
     if SOTCHI_RE.search(s):
         return pick(SOTCHI, used, rnd).format(n=n), ""
     if len(s) <= 40 and THANKS_RE.search(s):
@@ -545,7 +554,9 @@ def _ts(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
 
 
-def _delay(cid: str) -> timedelta:
+def _delay(cid: str, quick: bool = False) -> timedelta:
+    if quick:  # 続きを聞きたい人は次の見回り（10分おき）ですぐ返す
+        return timedelta(0)
     return timedelta(minutes=random.Random("d" + cid).randint(15, 70))
 
 
@@ -603,7 +614,8 @@ def job(rush: bool = False):
     for c, post_text, used, second in cands:
         if sent >= (20 if rush else PER_RUN):
             break
-        if not rush and now < _ts(c["timestamp"]) + _delay(c["id"]):
+        quick = second and bool(ZOKU_RE.search(c.get("text") or ""))
+        if not rush and now < _ts(c["timestamp"]) + _delay(c["id"], quick):
             continue
         if second:
             text, why = second_reply(c.get("username", ""), c.get("text", ""), c["id"], used)
