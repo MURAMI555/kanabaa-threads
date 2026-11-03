@@ -15,6 +15,7 @@
 import os
 import random
 import re
+import threading
 import time
 import unicodedata
 from datetime import date, datetime, timedelta
@@ -602,8 +603,20 @@ def candidates(now: datetime) -> list:
     return sorted(out, key=lambda x: x[0]["timestamp"])
 
 
+_lock = threading.Lock()  # 「全部返して」と5分おきの見回りが同時に走って二重に返さないように（11/03）
+
+
 def job(rush: bool = False):
     """rush＝みかちゃんの「今日のは全部返して」。待ち時間と件数の上限を外す（間は40〜120秒あける）"""
+    if not _lock.acquire(blocking=False):
+        return
+    try:
+        _job(rush)
+    finally:
+        _lock.release()
+
+
+def _job(rush: bool):
     if not enabled():
         return
     now = datetime.now(JST)
@@ -616,7 +629,7 @@ def job(rush: bool = False):
         return
     sent = 0
     for c, post_text, used, second in cands:
-        if sent >= (20 if rush else PER_RUN_NIGHT if now.hour >= NIGHT else PER_RUN):
+        if sent >= (100 if rush else PER_RUN_NIGHT if now.hour >= NIGHT else PER_RUN):
             break
         quick = second and bool(ZOKU_RE.search(c.get("text") or ""))
         night = _ts(c["timestamp"]).astimezone(JST).hour >= NIGHT
@@ -626,6 +639,8 @@ def job(rush: bool = False):
             text, why = second_reply(c.get("username", ""), c.get("text", ""), c["id"], used)
         else:
             text, why = make_reply(c.get("username", ""), c.get("text", ""), post_text, now.date(), c["id"], used)
+        if c["id"] in _done:
+            continue
         if text and kinshi.check(text):
             text, why = None, "チェックに引っかかった " + " / ".join(kinshi.check(text))
         if not text:
