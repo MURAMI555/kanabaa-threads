@@ -5,7 +5,7 @@
   型：生年月日8桁（動いていい日）／出会った月／漢字一字／彼の誕生日4桁→星座の11月の癖／2人の生まれ月→噛み合わせ／
       彼の誕生日の「日」→待たせ方の癖／最後に会ってから何日→温度／8桁＋「手放す」→この冬手放す癖（3週目 11/2〜11/8・2026/10/31 追加）
   お題の言葉に型が無い投稿でも、コメントの中身（8桁の日付・1〜12の数字・漢字）で返し方を選ぶ（10/31〜）
-・どの返信も最後に「フォローしておきな」の一言（2026/10/31 みかちゃん。閲覧6,243でフォロワーが増えなかったので）
+・フォローの呼びかけ・「また次も」の一言は書かない（10/31に入れたが、11/02 みかちゃん「言わなくていい」でやめた）
 ・返すのは、投稿に直接ついたコメントで、まだ叶ばぁが返していないものだけ（手で返した分も API で見えるので二重にならない）
 ・叶ばぁの返信にさらに返してくれた人（2往復目）にも1回だけ返す：お礼→短く／LINEに送った→届いてるよ／身の上話→受け止め＋プロフィールのリンク。重い言葉は手で（2026/11/01〜）
 ・自然な間：コメントから 15〜70分（人ごとにばらす）たってから。朝8時〜夜0時だけ。夜中のコメントは朝に返す
@@ -57,11 +57,6 @@ TEASE = [
     "……それとね、あんたの相手のことで、ひとつ視えたものがある。責める話じゃないよ。ただ、人の目がある所で言うことじゃないね。",
     "……それとね、もうひとつ視えたものがある。悪い話じゃないよ。ただ、ここで書くには少し深いね。",
     "……それとね、あんたの周りのことで、ひとつ視えたものがある。悪い話じゃないよ。ただ、ここで書くことじゃないね。",
-]
-FOLLOW = [  # 返信の最後の一言（10/31〜。フォローの呼びかけが投稿に無く、閲覧が増えてもフォロワーが増えなかった）
-    "フォローしておきな。次の夜も、ここで視るから。",
-    "まだなら、フォローしておいておくれ。次の夜の分も、順番に視る。",
-    "フォローしておくと、次の夜の婆さんを見つけやすいよ。",
 ]
 
 HITO = {1: "自分で道を切り開く人", 2: "相手の気持ちを先に汲む人", 3: "明るさで人を惹きつける人",
@@ -122,7 +117,7 @@ def birth_reply(username: str, s: str, today: date, rnd: random.Random, used=())
     lines = [pick(HEAD, used, rnd).format(n=name_of(username)),
              f"あんたが動いていいのは、{when}。",
              f"{name}で{lp}の人は、{HITO[lp]}{rnd.choice(GOBI)}{seinen.YOUBI[d.weekday()]}曜は「{label}」の巡り。{pick(advice, used, rnd)}",
-             pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)]
+             pick(TEASE, used, rnd)]
     return "\n".join(lines)
 
 
@@ -171,7 +166,7 @@ IMA = ["今のあんたは、相手の出方を待ってるように視えるね
 
 def month_reply(username: str, m: int, rnd: random.Random, used=()) -> str:
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), pick(TSUKI[m], used, rnd),
-                      pick(IMA, used, rnd), pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+                      pick(IMA, used, rnd), pick(TEASE, used, rnd)])
 
 
 KANJI = {  # 「今の気持ちを漢字一字で」（10/29〜）。一字ごとに2通り＝その字の読み。続けて HOSHII（欲しい言葉）
@@ -259,7 +254,7 @@ def kanji_of(comment: str):
 def kanji_reply(username: str, k: str, rnd: random.Random, used=()) -> str:
     yomi = pick(KANJI[k], used, rnd) if k in KANJI else pick(KANJI_ANY, used, rnd).format(k=k)
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), yomi,
-                      pick(HOSHII, used, rnd), pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+                      pick(HOSHII, used, rnd), pick(TEASE, used, rnd)])
 
 
 # ---------- 3週目（11/2〜11/8）の置かせ型（2026/10/31） ----------
@@ -313,7 +308,7 @@ def tanjobi_of(comment: str):
 def seiza_reply(username: str, mo: int, da: int, rnd: random.Random, used=()) -> str:
     name, _ = seinen.zodiac(date(2000, mo, da))
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"{mo}月{da}日なら、{name}だね。",
-                      pick(SEIZA[name], used, rnd), pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+                      pick(SEIZA[name], used, rnd), pick(TEASE, used, rnd)])
 
 
 UMARE = {1: "決めたら早い", 2: "空気を読んで合わせる", 3: "話して近づく", 4: "一歩ずつ確かめて進む", 5: "動いていないと落ち着かない",
@@ -345,12 +340,12 @@ def pair_reply(username: str, a: int, b: int, rnd: random.Random, used=()) -> st
     hito = (f"2人とも{a}月生まれ。{UMARE[a]}人同士{rnd.choice(GOBI)}" if a == b
             else f"{a}月生まれは{UMARE[a]}人。{b}月生まれは{UMARE[b]}人{rnd.choice(GOBI)}")
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), hito,
-                      pick(KAMI[key], used, rnd), pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+                      pick(KAMI[key], used, rnd), pick(TEASE, used, rnd)])
 
 
 def month_only_reply(username: str, a: int, rnd: random.Random, used=()) -> str:
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"{a}月生まれは、{UMARE[a]}人だよ。",
-                      "彼の生まれ月も分かったら、2つ並べてもう一度置いておくれ。噛み合わせまで視る。", pick(FOLLOW, used, rnd)])
+                      "彼の生まれ月も分かったら、2つ並べてもう一度置いておくれ。噛み合わせまで視る。"])
 
 
 MATASE = {  # 彼の誕生日の「日」を1桁（11・22は残す）にした数 → 待たせ方の癖
@@ -385,7 +380,7 @@ def day_reply(username: str, d: int, rnd: random.Random, used=()) -> str:
         n = sum(int(c) for c in str(n))
     head = f"{d}日生まれ。数にすると{n}だね。" if n != d else f"{d}日生まれだね。"
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), head + MATASE[n], pick(MATASE_TE, used, rnd),
-                      pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+                      pick(TEASE, used, rnd)])
 
 
 ONDO = [  # 最後に会ってからの日数 → 温度（上限日数, 文2通り）
@@ -413,7 +408,7 @@ def days_of(comment: str):
 def days_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
     band = next(t for lim, t in ONDO if n <= lim)
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"最後に会ってから{n}日。" + pick(band, used, rnd),
-                      pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+                      pick(TEASE, used, rnd)])
 
 
 TEBANASU = {  # 生年月日→あんたの数 → この冬手放すといい癖
@@ -432,7 +427,7 @@ def tebanasu_reply(username: str, s: str, rnd: random.Random, used=()) -> str:
     lp = seinen.life_path(s)
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)),
                       f"{name}で{lp}の人がこの冬手放すといいのは、「{TEBANASU[lp]}」だよ。", pick(TEBANASU_TE, used, rnd),
-                      pick(TEASE, used, rnd), pick(FOLLOW, used, rnd)])
+                      pick(TEASE, used, rnd)])
 
 
 def make_reply(username: str, comment: str, post_text: str, today: date, seed: str, used=()):
