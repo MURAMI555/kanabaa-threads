@@ -36,6 +36,7 @@ JST = pytz.timezone("Asia/Tokyo")
 _lock = threading.Lock()
 _log: list = []
 
+SAME_DAY_UNTIL = 19               # この時より前に届いた人は、その日の夜に初視を送る
 PER_DAY = 3                      # 1日に送る初視の数（全アカウント合計3件までの決まり。叶ばぁはここで守る）
 GATHER = timedelta(minutes=30)   # 最後のメッセージからこれだけ待って書く
 LATE = {"asa": 3, "yu": 3, "hatsumi": 2, "minaoshi": 3, "mayou": 3, "chigai": 3, "mae": 3}  # 予定から何時間遅れまでなら送るか（再起動で遅れた時）
@@ -285,16 +286,23 @@ def _at(day, h1, m1, h2, m2) -> str:
 
 
 def _plan(it: dict, items: dict) -> dict:
+    # 2026/11/03 みかちゃん「夕方くらいに送ってくれる人はその日の夜に送っちゃおう。夜遅くの人は次の日でいい」
+    # 0〜19時に届いた人＝その日の21時台（0〜5時の深夜は前からその日）。19時以降＝次の日の21時台
     uk = _t(it["auto"]["uketsuke"])
-    day = uk.date() if uk.hour < 5 else uk.date() + timedelta(days=1)
+    day = uk.date() if uk.hour < SAME_DAY_UNTIL else uk.date() + timedelta(days=1)
     counts = _day_counts(items)
     while counts.get(day.isoformat(), 0) >= PER_DAY:
         day += timedelta(days=1)
-    return {"asa": _at(day, 8, 0, 8, 59), "yu": _at(day, 17, 0, 17, 59), "hatsumi": _at(day, 21, 0, 21, 40),
-            "minaoshi": _at(day + timedelta(days=1), 21, 0, 21, 30),
-            "mayou": _at(day + timedelta(days=2), 21, 0, 21, 30),
-            "chigai": _at(day + timedelta(days=3), 21, 0, 21, 30), "mae": _at(day + timedelta(days=7), 21, 0, 21, 30),
-            "d": day.strftime("%Y%m%d")}
+    p = {"asa": _at(day, 8, 0, 8, 59), "yu": _at(day, 17, 0, 17, 59), "hatsumi": _at(day, 21, 0, 21, 40),
+         "minaoshi": _at(day + timedelta(days=1), 21, 0, 21, 30),
+         "mayou": _at(day + timedelta(days=2), 21, 0, 21, 30),
+         "chigai": _at(day + timedelta(days=3), 21, 0, 21, 30), "mae": _at(day + timedelta(days=7), 21, 0, 21, 30),
+         "d": day.strftime("%Y%m%d")}
+    if day == uk.date() and uk.hour >= 5:  # 朝〜夕方に届いてその日に送る人は「昨夜は眠れたかい」の③翌朝を送らない。④夕方は届いて1時間たっていれば
+        p.pop("asa")
+        if _t(p["yu"]) < uk + timedelta(hours=1):
+            p.pop("yu")
+    return p
 
 
 def kigen_text(d: str) -> str:
