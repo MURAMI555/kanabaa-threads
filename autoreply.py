@@ -28,6 +28,8 @@ from inbox_kit import hizuke, kinshi, seinen
 JST = pytz.timezone("Asia/Tokyo")
 ACCOUNT = "kanabaa"
 PER_RUN = 2
+NIGHT = 18       # この時から夜0時までのコメントは 8〜15分で返す（2026/11/03 みかちゃん「夜は一発目を8〜15分以内に」）
+PER_RUN_NIGHT = 4  # 夜は5分おきの見回りで4件まで（返信の間は40〜120秒あける）
 OKASE = re.compile(r"置いていきな|置いてきな|置きな")  # 置かせ投稿の目印（言い方が少し変わっても拾う）
 HOURS = (8, 24)  # 返してよい時間帯（JST の時）
 bp = Blueprint("autoreply", __name__)
@@ -554,9 +556,11 @@ def _ts(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%dT%H:%M:%S%z")
 
 
-def _delay(cid: str, quick: bool = False) -> timedelta:
-    if quick:  # 続きを聞きたい人は次の見回り（10分おき）ですぐ返す
+def _delay(cid: str, quick: bool = False, night: bool = False) -> timedelta:
+    if quick:  # 続きを聞きたい人は次の見回りですぐ返す
         return timedelta(0)
+    if night:  # 夜は 8〜15分（見回りが5分おきなので、実際は8〜20分）
+        return timedelta(minutes=random.Random("d" + cid).randint(8, 10))
     return timedelta(minutes=random.Random("d" + cid).randint(15, 70))
 
 
@@ -612,10 +616,11 @@ def job(rush: bool = False):
         return
     sent = 0
     for c, post_text, used, second in cands:
-        if sent >= (20 if rush else PER_RUN):
+        if sent >= (20 if rush else PER_RUN_NIGHT if now.hour >= NIGHT else PER_RUN):
             break
         quick = second and bool(ZOKU_RE.search(c.get("text") or ""))
-        if not rush and now < _ts(c["timestamp"]) + _delay(c["id"], quick):
+        night = _ts(c["timestamp"]).astimezone(JST).hour >= NIGHT
+        if not rush and now < _ts(c["timestamp"]) + _delay(c["id"], quick, night):
             continue
         if second:
             text, why = second_reply(c.get("username", ""), c.get("text", ""), c["id"], used)
@@ -676,4 +681,4 @@ def page():
             return f"<pre>{e} {getattr(getattr(e, 'response', None), 'text', '')[:300]}</pre>"
     rows = "\n".join(reversed(_log)) or "（まだ何もしていない）"
     state = "動いている" if enabled() else "止まっている（KANABAA_AUTOREPLY=0 かトークン無し）"
-    return f"<pre style='white-space:pre-wrap;font-size:13px'>叶ばぁ 自動返信：{state}\n朝{HOURS[0]}時〜夜0時・コメントから15〜70分後・1回{PER_RUN}件まで\n\n{rows}</pre>"
+    return f"<pre style='white-space:pre-wrap;font-size:13px'>叶ばぁ 自動返信：{state}\n朝{HOURS[0]}時〜夜0時・コメントから15〜70分後（{NIGHT}時からは8〜15分）・1回{PER_RUN}件まで（夜{PER_RUN_NIGHT}件）\n\n{rows}</pre>"

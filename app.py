@@ -324,7 +324,7 @@ if os.environ.get("DISABLE_SCHEDULER") != "1":
     _sched.add_job(refresh_weekly, "cron", day_of_week="mon", hour=4, minute=0, id="refresh")
     _sched.add_job(ig_refresh_weekly, "cron", day_of_week="mon", hour=4, minute=10, id="ig_refresh")
     _sched.add_job(inbox.job, "interval", minutes=15, id="inbox", max_instances=1)
-    _sched.add_job(autoreply.job, "interval", minutes=10, id="autoreply", max_instances=1)
+    _sched.add_job(autoreply.job, "interval", minutes=5, id="autoreply", max_instances=1)  # 夜は8〜15分で返すため5分おき（11/03）
     _sched.add_job(autoreply_reiko.job, "interval", minutes=10, id="autoreply_reiko", max_instances=1)
     _sched.start()
     _note("scheduler started")
