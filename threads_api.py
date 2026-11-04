@@ -75,12 +75,17 @@ def post(text: str, image_url: str | None = None, reply_to_id: str | None = None
     r = requests.post(f"{BASE}/{user_id(account)}/threads", data=data, timeout=60)
     r.raise_for_status()
     creation_id = r.json()["id"]
-    if image_url or reply_to_id:  # 他人のコメントへの返信も、すぐ公開すると「Media Not Found」(400) になることがある（10/28）
-        _wait_ready(creation_id, account)
-    r2 = requests.post(f"{BASE}/{user_id(account)}/threads_publish",
-                       data={"creation_id": creation_id, "access_token": token(account)}, timeout=60)
+    _wait_ready(creation_id, account)  # 文字だけでも、すぐ公開すると400で落ちることがある（10/28 返信・11/04 投稿）
+    # 公開がときどき400で落ち、1回で諦めるとその枠が丸ごと抜ける（11/04 叶ばぁ12時・13時、鈴12:32・15:32）。少し待って3回まで試す
+    for n in range(3):
+        r2 = requests.post(f"{BASE}/{user_id(account)}/threads_publish",
+                           data={"creation_id": creation_id, "access_token": token(account)}, timeout=60)
+        if r2.ok:
+            return r2.json()["id"]
+        print(f"[{account}] 公開に失敗（{n + 1}回目）{r2.status_code}: {r2.text[:300]}", flush=True)
+        if n < 2:
+            time.sleep(20 * (n + 1))
     r2.raise_for_status()
-    return r2.json()["id"]
 
 
 def my_posts(limit: int = 25, account: str = DEFAULT) -> list:
