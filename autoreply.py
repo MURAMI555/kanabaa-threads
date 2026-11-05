@@ -3,7 +3,8 @@
 受付箱（inbox_kit）と違って AI もデータ置き場も使わない。返信は型から組み立てる（同じ文の使い回しにならないよう、言い回しを人ごとに選ぶ）。
 ・対象：叶ばぁの直近48時間の投稿のうち「置いていきな」を含むもの。
   型：生年月日8桁（動いていい日）／出会った月／漢字一字／彼の誕生日4桁→星座の11月の癖／2人の生まれ月→噛み合わせ／
-      彼の誕生日の「日」→待たせ方の癖／最後に会ってから何日→温度／8桁＋「手放す」→この冬手放す癖（3週目 11/2〜11/8・2026/10/31 追加）
+      彼の誕生日の「日」→待たせ方の癖／最後に会ってから何日→温度／8桁＋「手放す」→この冬手放す癖（3週目 11/2〜11/8・2026/10/31 追加）／
+      彼の年齢→抱えてるもの／連絡の間隔→引き出しの段／出会って何か月目→季節と節目／既読から何時間→今夜の過ごし方／今年会った回数→年内の流れ（4週目 11/9〜11/15・2026/11/05 追加）
   お題の言葉に型が無い投稿でも、コメントの中身（8桁の日付・1〜12の数字・漢字）で返し方を選ぶ（10/31〜）
 ・フォローの呼びかけ・「また次も」の一言は書かない（10/31に入れたが、11/02 みかちゃん「言わなくていい」でやめた）
 ・返すのは、投稿に直接ついたコメントで、まだ叶ばぁが返していないものだけ（手で返した分も API で見えるので二重にならない）
@@ -433,11 +434,186 @@ def tebanasu_reply(username: str, s: str, rnd: random.Random, used=()) -> str:
                       pick(TEASE, used, rnd)])
 
 
+# ---------- 4週目（11/9〜11/15）の置かせ型（2026/11/05） ----------
+
+
+def number_of(comment: str):
+    """コメントの中の数を1つ。8桁の日付や、数が2つ以上あるものは読まない"""
+    s = unicodedata.normalize("NFKC", comment)
+    if hizuke.find_dates(s):
+        return None
+    nums = re.findall(r"(?<!\d)\d{1,4}(?!\d)", s)
+    return int(nums[0]) if len(nums) == 1 else None
+
+
+def in_days(comment: str):
+    """連絡の間隔を日数に。「3」「3日」「週1」「2週間」「月1」「1か月」「毎日」"""
+    s = unicodedata.normalize("NFKC", comment)
+    if "毎日" in s:
+        return 1
+    n = number_of(s)
+    if n is None or n <= 0:
+        return None
+    if re.search(r"週\s*\d", s):
+        return max(1, 7 // n)
+    if re.search(r"月\s*\d", s):
+        return max(1, 30 // n)
+    if "週間" in s:
+        return n * 7
+    if re.search(r"\d\s*[かヶケカ]?\s*月", s):
+        return n * 30
+    if "年" in s:
+        return n * 365
+    return n
+
+
+def in_hours(comment: str):
+    """既読からの時間を時間数に。「15」「15時間」「2日」「1週間」「半日」"""
+    s = unicodedata.normalize("NFKC", comment)
+    if "半日" in s:
+        return 12
+    n = number_of(s)
+    if n is None:
+        return None
+    return n * 168 if "週間" in s else n * 24 if "日" in s else n
+
+
+def in_months(comment: str):
+    """出会ってからの月数に。「3」「18か月」「2年」"""
+    s = unicodedata.normalize("NFKC", comment)
+    n = number_of(s)
+    if n is None or n <= 0:
+        return None
+    return n * 12 if "年" in s else n
+
+
+NENREI = [  # 彼の年齢 → 恋より先に抱えてるもの（上限の歳, 文2通り）
+    (24, ["20代の前半は、自分が何者になるかで頭がいっぱいの歳だよ。恋より先に、自分の足場を探してるように視える。",
+          "この歳の男は、仕事でも人付き合いでも、まだ自分の居場所を探してる。あんたに向ける余裕が、日によって変わりやすいね。"]),
+    (29, ["20代の後半は、仕事で一人前に見られたい歳だよ。今の彼は、仕事の評価を背負ってるように視える。",
+          "この歳の男は、周りが結婚し始めて、口にしなくても焦りを抱えやすい。先のことを聞かれると黙りやすいね。"]),
+    (34, ["30代の前半は、仕事の責任が一段重くなる歳だよ。今の彼は、自分の先行きを背負ってるように視える。",
+          "この歳の男は、結婚か仕事か、どっちも答えを迫られやすい。黙ってる時は、たいてい頭の中で計算してるよ。"]),
+    (39, ["30代の後半は、上と下に挟まれる歳だよ。今の彼は、仕事の立場を背負ってるように視える。",
+          "この歳の男は、やり直しがきくうちに決めたい気持ちと、怖さの両方を抱えやすい。迷いが長いのはそのせいのことも多いね。"]),
+    (49, ["40代は、仕事と親のことが一緒に肩に乗ってくる歳だよ。今の彼は、人に言わない荷物を背負ってるように視える。",
+          "この歳の男は、弱音を言える相手が減っていく。あんたの前で疲れた顔を見せるなら、それは悪くない位置だね。"]),
+    (59, ["50代は、親のこと、体のこと、仕事の終わり方を考え始める歳だよ。今の彼は、自分の先のことを背負ってるように視える。",
+          "この歳の男は、これからの時間の使い方を静かに数えてる。派手な言葉より、一緒にいる時間で気持ちを見な。"]),
+    (120, ["60を過ぎた男は、誰と過ごすかを選び始める歳だよ。今の彼は、残りの時間の使い方を背負ってるように視える。",
+           "この歳の男は、損得より居心地で動きやすい。隣にいて楽かどうかを、いちばん見てるよ。"]),
+]
+
+
+def nenrei_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
+    band = next(t for lim, t in NENREI if n <= lim)
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"彼は{n}歳だね。" + pick(band, used, rnd),
+                      pick(TEASE, used, rnd)])
+
+
+HIKIDASHI = [  # 連絡の間隔（日）→ あんたが入ってる引き出し
+    (1, ["毎日なら、いちばん上の段だよ。手がすぐ届くところに、あんたを置いてる気配がある。",
+         "毎日来るなら、上の段の手前だね。あとは、連絡の中身に用事以外が混じってるかを見な。"]),
+    (3, ["数日に1回なら、上の段に視える。忙しくても、思い出す場所にあんたがいるよ。",
+         "その間隔なら、上の段の少し奥だね。間が空く日は、向こうの用事が詰まってることも多いよ。"]),
+    (7, ["週に1回くらいなら、真ん中の段だね。大事にはしてるが、毎日開ける段じゃない。",
+         "その間隔は、真ん中の段に視える。開ける曜日が決まってるなら、彼の中で習慣にはなってるよ。"]),
+    (30, ["その間隔なら、奥の段だね。消えたわけじゃない。ただ、用事がないと開けない段だよ。",
+          "奥の段に入ってるように視える。奥でも、捨ててあるわけじゃない。手前に出すなら、用事を一つ作ってやりな。"]),
+    (10 ** 6, ["いちばん奥の段に視えるね。しまったことを、本人も忘れかけてる気配がある。",
+               "かなり奥の段だよ。ただ、取っておいてるのは彼のほうだ。あんたがそこで待つかどうかは、別の話だよ。"]),
+]
+
+
+def kankaku_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
+    band = next(t for lim, t in HIKIDASHI if n <= lim)
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), pick(band, used, rnd), pick(TEASE, used, rnd)])
+
+
+KISETSU = [  # 出会ってからの月数 → 2人の季節
+    (3, "まだ芽が出たばかりの季節だよ。水をやりすぎないほうが、よく伸びる頃だね。"),
+    (6, "若葉の季節だね。楽しいぶん、お互いのいいところしか見えてない頃だよ。"),
+    (12, "夏の入り口に視える。近づいた分だけ、小さなズレが気になり始める頃だね。"),
+    (24, "実りの前の季節だね。このままでいいのか、どちらかが考え始める頃だよ。"),
+    (60, "実る前の冬に視える。静かに見えても、根は伸びてる。何を一緒に決めるかが問われる頃だね。"),
+    (10 ** 6, "何度も季節を越えた2人だね。根は深いが、同じ場所に居続けると風が通らなくなる頃だよ。"),
+]
+FUSHIME = (3, 6, 12, 18, 24, 36, 48, 60, 72, 84, 96, 108, 120)
+
+
+def kisetsu_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
+    kisetsu = next(t for lim, t in KISETSU if n <= lim)
+    nxt = next((f for f in FUSHIME if f > n), n // 12 * 12 + 12)
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"出会って{n}か月目か。" + kisetsu,
+                      f"次の節目は{nxt}か月目。そこまでに、あんたがどうしたいかを1つ決めておきな。", pick(TEASE, used, rnd)])
+
+
+SUGOSHI = [  # 既読からの時間 → 今夜の過ごし方
+    (3, ["まだそのくらいなら、待つ時間にもなってないよ。今夜は湯に長めに浸かって、スマホは脱衣所に置いてきな。",
+         "そのくらいなら、彼はまだ返事の途中かもしれないね。今夜は好きな飲み物を1杯入れて、先に自分を落ち着かせな。"]),
+    (12, ["半日までなら、文面を送り直さないのがいちばんだよ。今夜は早めに布団に入りな。",
+          "そのくらいが、いちばん読み返したくなる頃だね。今夜は読み返しを1回だけと決めて、あとは寝る支度をしな。"]),
+    (24, ["1日近く待ったね。今夜は彼の話を、1人だけに聞いてもらいな。口に出すと、少し軽くなるよ。",
+          "よく待ったね。今夜は通知を切って、明日の朝まで見ない夜にしてみな。"]),
+    (72, ["何日も待ったね。今夜は彼のことを考える時間に、終わりの時刻を決めな。10時までなら10時まで。",
+          "そこまで待つと、心が先に疲れるよ。今夜はあったかいものを食べて、早く寝ることだけやりな。"]),
+    (10 ** 6, ["ずいぶん長く待ったね。今夜は既読の画面を閉じて、あんたが楽しみにしてることを1つ、来週の予定に入れな。",
+               "よくここまで待ったよ。今夜は待つのを1回お休みしな。誰かと話すか、早く寝るか、どっちかでいい。"]),
+]
+
+
+def sugoshi_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
+    band = next(t for lim, t in SUGOSHI if n <= lim)
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"既読から{n}時間だね。" + pick(band, used, rnd),
+                      pick(TEASE, used, rnd)])
+
+
+NAGARE = [  # 今年会った回数 → 年内の流れ
+    (0, ["今年はまだ会えてないんだね。年内は、会うことより、声か文を1回やりとりするのが先の流れに視えるよ。",
+         "今年はまだか。それでも置いてくれたね。年内は、会う約束より先に、用事のある一通を1つ送る流れだよ。"]),
+    (3, ["数えるほどだね。年内は、回数を増やすより、次の1回の約束を先に決める流れに視えるよ。",
+         "そのくらいなら、1回の重みが大きいね。年内は、12月に入る前に日を1つ聞いておく流れだよ。"]),
+    (12, ["月に1回くらいの2人だね。年内は、今の間隔を崩さずに、先の話を1つ足す流れに視えるよ。",
+          "ほどよく会えてるね。年内は、会った時に来年の話が出るかどうかを見る流れだよ。"]),
+    (50, ["よく会ってるね。年内は、会う回数より、話の中身が変わるかどうかを見る流れに視えるよ。",
+          "それだけ会えてるなら、年内は2人の間の決まりごとを1つ言葉にする流れだね。"]),
+    (10 ** 6, ["暮らしに近いくらい会ってるね。年内は、当たり前になったことに、ありがとうを1つ足す流れに視えるよ。",
+               "もう数えるのも大変だね。年内は、会わない日のあんたの時間を1つ作る流れだよ。"]),
+]
+
+
+def kaisu_of(comment: str):
+    s = unicodedata.normalize("NFKC", comment)
+    if re.search(r"数えきれ|数え切れ|毎日|毎週|たくさん|いっぱい", s):
+        return 100
+    return number_of(s)
+
+
+def kaisu_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
+    band = next(t for lim, t in NAGARE if n <= lim)
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), pick(band, used, rnd), pick(TEASE, used, rnd)])
+
+
 def make_reply(username: str, comment: str, post_text: str, today: date, seed: str, used=()):
     """(文面 or None, 読めなかった理由)。used＝同じ投稿で叶ばぁがもう返した文（言い回しをかぶらせない）"""
     rnd = random.Random(seed)
     if kinshi.needs_care(comment):
         return None, "気持ちが重い言葉あり（手で）"
+    if "彼の年齢" in post_text:  # 11/9 彼の年齢 → 抱えてるもの
+        n = number_of(comment)
+        return (nenrei_reply(username, n, rnd, used), "") if n and 15 <= n <= 120 else (None, "年齢が読めない")
+    if "間隔" in post_text:  # 11/10 連絡の間隔 → 引き出しの段
+        n = in_days(comment)
+        return (kankaku_reply(username, n, rnd, used), "") if n else (None, "間隔が読めない")
+    if "か月目" in post_text:  # 11/11 出会ってから何か月目 → 季節と節目
+        n = in_months(comment)
+        return (kisetsu_reply(username, n, rnd, used), "") if n else (None, "月数が読めない")
+    if "既読から" in post_text:  # 11/13 既読から何時間 → 今夜の過ごし方
+        n = in_hours(comment)
+        return (sugoshi_reply(username, n, rnd, used), "") if n is not None else (None, "時間が読めない")
+    if "会った回数" in post_text:  # 11/14 今年会った回数 → 年内の流れ
+        n = kaisu_of(comment)
+        return (kaisu_reply(username, n, rnd, used), "") if n is not None else (None, "回数が読めない")
     if "手放す" in post_text:  # 11/7 自分の8桁 → この冬手放す癖
         ds = hizuke.find_dates(comment)
         return (tebanasu_reply(username, ds[0], rnd, used), "") if ds else (None, "生年月日が読めない")
