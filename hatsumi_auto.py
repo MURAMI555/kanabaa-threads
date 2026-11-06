@@ -39,6 +39,11 @@ _log: list = []
 SAME_DAY_UNTIL = 19               # この時より前に届いた人は、その日の夜に初視を送る
 PER_DAY = 3                      # 1日に送る初視の数（全アカウント合計3件までの決まり。叶ばぁはここで守る）
 GATHER = timedelta(minutes=30)   # 最後のメッセージからこれだけ待って書く
+# 2026/11/06 みかちゃん「今夜は初視10人」：23時〜翌1時半の受付は1時半に送る（1時半を過ぎた受付はいつもの流れ）
+TONIGHT_FROM = JST.localize(datetime(2026, 11, 6, 23, 0))
+TONIGHT_SEND = JST.localize(datetime(2026, 11, 7, 1, 30))
+TONIGHT_MAX = 10
+TONIGHT_GATHER = timedelta(minutes=10)
 LATE = {"asa": 3, "yu": 3, "hatsumi": 2, "minaoshi": 3, "mayou": 3, "chigai": 3, "mae": 3}  # 予定から何時間遅れまでなら送るか（再起動で遅れた時）
 PAGE = "https://kanabaa-hatsumi.netlify.app/honkantei/?d={d}"
 PAY_LIMITED = "https://kanabaa.stores.jp/items/6ae1ff617851cfc94d4f3d59"   # 4,980円
@@ -269,11 +274,29 @@ def start(uid: str):
     note(f"{uid[-6:]} の初視の流れを始めた")
 
 
+def _in_tonight(t: datetime) -> bool:
+    return TONIGHT_FROM <= t < TONIGHT_SEND
+
+
+def _tonight_count(items) -> int:
+    return sum(1 for it in items.values() if ((it.get("auto") or {}).get("plan") or {}).get("tonight"))
+
+
+def _plan_tonight() -> dict:
+    day = TONIGHT_SEND.date()
+    return {"hatsumi": _s(TONIGHT_SEND), "tonight": True,
+            "minaoshi": _at(day + timedelta(days=1), 21, 0, 21, 30),
+            "mayou": _at(day + timedelta(days=2), 21, 0, 21, 30),
+            "chigai": _at(day + timedelta(days=3), 21, 0, 21, 30), "mae": _at(day + timedelta(days=7), 21, 0, 21, 30),
+            "d": day.strftime("%Y%m%d")}
+
+
 def _day_counts(items) -> dict:
     c = {}
     for it in items.values():
-        h = ((it.get("auto") or {}).get("plan") or {}).get("hatsumi")
-        if h:
+        pl = (it.get("auto") or {}).get("plan") or {}
+        h = pl.get("hatsumi")
+        if h and not pl.get("tonight"):  # 今夜の10人は1日の上限に数えない
             c[h[:10]] = c.get(h[:10], 0) + 1
     return c
 
@@ -289,6 +312,8 @@ def _plan(it: dict, items: dict) -> dict:
     # 2026/11/03 みかちゃん「夕方くらいに送ってくれる人はその日の夜に送っちゃおう。夜遅くの人は次の日でいい」
     # 0〜19時に届いた人＝その日の21時台（0〜5時の深夜は前からその日）。19時以降＝次の日の21時台
     uk = _t(it["auto"]["uketsuke"])
+    if _in_tonight(uk) and _tonight_count(items) < TONIGHT_MAX:
+        return _plan_tonight()
     day = uk.date() if uk.hour < SAME_DAY_UNTIL else uk.date() + timedelta(days=1)
     counts = _day_counts(items)
     while counts.get(day.isoformat(), 0) >= PER_DAY:
@@ -366,7 +391,10 @@ def _prepare(it: dict, items: dict):
     store.put(it)
     p = a["plan"]
     link = f"{SITE}/hatsumi"
-    if a["state"] == "ready":
+    if a["state"] == "ready" and p.get("tonight"):
+        tell_mika(f"【叶ばぁ】{a['name']}さんの初視ができたよ（{len(a['draft'])}字・今夜{_tonight_count(items)}人目）。1時半に自動で送るよ。\n"
+                  f"読む・直す・止めるのはここ\n{link}")
+    elif a["state"] == "ready":
         tell_mika(f"【叶ばぁ】{a['name']}さんの初視ができたよ（{len(a['draft'])}字）。\n"
                   f"{p['hatsumi'][5:].replace('-', '/')} に自動で送るよ（翌朝・夕方のひとことも）。\n"
                   f"読む・直す・止めるのはここ（その日の20時までに）\n{link}")
@@ -419,11 +447,22 @@ def tick():
 
 
 def _step(it, a, items, now):
+    tonight_uk = _in_tonight(_t(a["uketsuke"]))
+    if a["state"] == "ready" and tonight_uk and not a["plan"].get("tonight") and "hatsumi" not in a["sent"] \
+            and not a.get("stop") and now < TONIGHT_SEND and _tonight_count(items) < TONIGHT_MAX:
+        # 投稿より先に受け付けて翌日の予定になっていた人も、今夜の1時半へ（期限の日付が違う人は書き直す）
+        if a["plan"].get("d") == TONIGHT_SEND.strftime("%Y%m%d"):
+            a["plan"] = _plan_tonight()
+            store.put(it)
+            note(f"{it['id'][-6:]} を今夜の1時半に移した")
+        else:
+            a["state"] = "wait"
     if a["state"] == "wait":
         last = max([_t(a["uketsuke"])] + [_t(m["at"]) for m in it.get("messages", [])])
-        if now - last >= GATHER:
+        if now - last >= (TONIGHT_GATHER if tonight_uk else GATHER):
             _prepare(it, items)
-        return
+        if a["state"] != "ready" or not a["plan"].get("tonight"):
+            return
     if a["state"] != "ready" or a.get("stop"):
         return
     if it.get("status") == "blocked":

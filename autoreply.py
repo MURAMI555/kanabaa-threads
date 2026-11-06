@@ -594,11 +594,28 @@ def kaisu_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
     return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), pick(band, used, rnd), pick(TEASE, used, rnd)])
 
 
+# 2026/11/06 みかちゃん「今夜は初視10人」の手動投稿へのコメント＝リンクへ案内する。1時半を過ぎたら返さない（この夜だけ）
+TONIGHT_FROM = JST.localize(datetime(2026, 11, 6, 23, 0))
+TONIGHT_UNTIL = JST.localize(datetime(2026, 11, 7, 1, 30))
+TONIGHT_MARK = "[今夜10人]"
+TONIGHT = [
+    "{n}さん、来てくれてありがとね。今夜の初視は、プロフィールのリンクからおいで。LINEに4つ書いて、1時半までに送っておくれ。",
+    "{n}さん、待ってたよ。プロフィールのリンクから公式LINEに来ておくれ。1時半までに4つ書いて送ってくれたら、今夜のうちに視て返すよ。",
+    "{n}さん、ありがとね。初視はプロフィールのリンクからだよ。今夜は1時半までに、LINEに4つ書いて送っておくれ。",
+]
+
+
+def is_tonight(p: dict) -> bool:
+    return "初視" in (p.get("text") or "") and TONIGHT_FROM <= _ts(p["timestamp"]) < TONIGHT_UNTIL
+
+
 def make_reply(username: str, comment: str, post_text: str, today: date, seed: str, used=()):
     """(文面 or None, 読めなかった理由)。used＝同じ投稿で叶ばぁがもう返した文（言い回しをかぶらせない）"""
     rnd = random.Random(seed)
     if kinshi.needs_care(comment):
         return None, "気持ちが重い言葉あり（手で）"
+    if post_text.startswith(TONIGHT_MARK):
+        return pick(TONIGHT, used, rnd).format(n=name_of(username)), ""
     if "彼の年齢" in post_text:  # 11/9 彼の年齢 → 抱えてるもの
         n = number_of(comment)
         return (nenrei_reply(username, n, rnd, used), "") if n and 15 <= n <= 120 else (None, "年齢が読めない")
@@ -741,13 +758,18 @@ def _delay(cid: str, quick: bool = False, night: bool = False) -> timedelta:
     return timedelta(minutes=random.Random("d" + cid).randint(15, 70))
 
 
-def candidates(now: datetime) -> list:
+def candidates(now: datetime, only_tonight: bool = False) -> list:
     """返す候補 [(コメント, 投稿の文, その投稿で叶ばぁが返した文のリスト, 2往復目か)]。古い順
     2往復目＝叶ばぁの返信にさらに返してくれたもの。その人の2往復目に一度返したら、そこで止める（往復を続けない）"""
     out = []
     for p in threads_api.my_posts(limit=25, account=ACCOUNT):
         text = p.get("text") or ""
-        if not OKASE.search(text) or now - _ts(p["timestamp"]) > timedelta(hours=48):
+        tonight = is_tonight(p)
+        if tonight:
+            if now >= TONIGHT_UNTIL:
+                continue
+            text = TONIGHT_MARK + text
+        elif only_tonight or not OKASE.search(text) or now - _ts(p["timestamp"]) > timedelta(hours=48):
             continue
         conv = threads_api.conversation(p["id"], account=ACCOUNT)
         mine = {c["id"]: c for c in conv if c.get("is_reply_owned_by_me")}
@@ -796,19 +818,20 @@ def _job(rush: bool):
     if not enabled():
         return
     now = datetime.now(JST)
-    if not rush and not (HOURS[0] <= now.hour < HOURS[1]):
+    only_tonight = not rush and not (HOURS[0] <= now.hour < HOURS[1])  # 夜中は今夜の投稿だけ（1時半まで）
+    if only_tonight and now >= TONIGHT_UNTIL:
         return
     try:
-        cands = candidates(now)
+        cands = candidates(now, only_tonight)
     except Exception as e:
         _note(f"コメントの取得に失敗: {e}")
         return
     sent = 0
     for c, post_text, used, second in cands:
-        if sent >= (100 if rush else PER_RUN_NIGHT if now.hour >= NIGHT else PER_RUN):
+        if sent >= (100 if rush else PER_RUN_NIGHT if now.hour >= NIGHT or only_tonight else PER_RUN):
             break
         quick = second and bool(ZOKU_RE.search(c.get("text") or ""))
-        night = _ts(c["timestamp"]).astimezone(JST).hour >= NIGHT
+        night = _ts(c["timestamp"]).astimezone(JST).hour >= NIGHT or only_tonight
         if not rush and now < _ts(c["timestamp"]) + _delay(c["id"], quick, night):
             continue
         if second:
