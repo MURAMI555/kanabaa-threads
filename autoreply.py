@@ -867,7 +867,9 @@ def peek() -> str:
     out = []
     for p in threads_api.my_posts(limit=25, account=ACCOUNT):
         text = p.get("text") or ""
-        if not OKASE.search(text):
+        if _ts(p["timestamp"]) >= TONIGHT_FROM - timedelta(hours=2):
+            out.append(f"◆ {p['timestamp']} 今夜={is_tonight(p)} {text[:40]!r}")
+        if not OKASE.search(text) and not is_tonight(p):
             continue
         conv = threads_api.conversation(p["id"], account=ACCOUNT)
         out.append(f"■ {p['timestamp']} {text[:20]} コメント{len(conv)}件")
