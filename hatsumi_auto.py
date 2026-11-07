@@ -46,7 +46,7 @@ TONIGHT_MAX = 10
 TONIGHT_GATHER = timedelta(minutes=10)
 LATE = {"asa": 3, "yu": 3, "hatsumi": 2, "minaoshi": 3, "mayou": 3, "chigai": 3, "mae": 3}  # 予定から何時間遅れまでなら送るか（再起動で遅れた時）
 PAGE = "https://kanabaa-hatsumi.netlify.app/honkantei/?d={d}"
-PAY_LIMITED = "https://kanabaa.stores.jp/items/6ae1ff617851cfc94d4f3d59"   # 4,980円
+PAY_LIMITED = "https://kanabaa.stores.jp/items/6aef248ed168fb2c9f0d96f7"   # 4,980円（デジタル商品・住所入力なし 2026/11/07）
 SITE = "https://kanabaa-threads.onrender.com"
 
 ASA = ("{n}さん、昨夜はちゃんと眠れたかい。\n\n"
