@@ -22,9 +22,12 @@ from xml.sax.saxutils import escape
 HERE = Path(__file__).resolve().parent
 FONT_PATH = HERE / "hatsumi_assets" / "NotoSerifJP-Regular.ttf"
 FACE_PATH = HERE / "docs" / "kanabaa.jpg"
+BG_PATH = HERE / "hatsumi_assets" / "cover_bg.jpg"
+BG_SIZE = (1083, 1453)
 FONT = "KanabaaSerif"
 W, H = 148 * mm, 210 * mm
-PAPER = HexColor("#f2ece1")
+PAPER = HexColor("#fcf5ea")
+DATE_INK = HexColor("#4a2f2a")
 INK = HexColor("#26354a")
 NAVY = HexColor("#1f3350")
 RED = HexColor("#9e2f24")
@@ -32,7 +35,6 @@ GOLD = HexColor("#b08d45")
 GRAY = HexColor("#7a7265")
 BOX = HexColor("#fbf7ee")
 BOX_LINE = HexColor("#cdbf9f")
-CREAM = HexColor("#f7efe0")
 
 BODY = ParagraphStyle("body", fontName=FONT, fontSize=12.5, leading=24, textColor=INK, wordWrap="CJK", spaceAfter=11)
 BULLET = ParagraphStyle("bullet", parent=BODY, leftIndent=12.5, firstLineIndent=-12.5, spaceAfter=5)
@@ -243,43 +245,27 @@ def _vertical(c, x, top, text, size, gap, color):
 
 
 def _cover(name: str, d: str):
+    """表紙はみかちゃんのデザイン画像（名前と日付を消したもの）に、名前・日付・写真を重ねる。
+    位置は画像の上のピクセルで指定する。左右の余白を少し切って A5 に合わせる"""
+    s = H / BG_SIZE[1]
+    ox = (W - BG_SIZE[0] * s) / 2
+    px = lambda x: ox + x * s  # noqa: E731
+    py = lambda y: H - y * s   # noqa: E731
+
     def draw(c, doc):
         c.saveState()
-        c.setFillColor(PAPER)
-        c.rect(0, 0, W, H, stroke=0, fill=1)
-        c.setStrokeColor(GOLD)
-        c.setLineWidth(1.4)
-        c.rect(7 * mm, 7 * mm, W - 14 * mm, H - 14 * mm)
-        c.setLineWidth(.55)
-        c.rect(8.4 * mm, 8.4 * mm, W - 16.8 * mm, H - 16.8 * mm)
-        # 赤い帯
-        c.setFillColor(RED)
-        c.rect(W - 35 * mm, H - 75 * mm, 15 * mm, 68 * mm, stroke=0, fill=1)
-        _vertical(c, W - 27.5 * mm, H - 16 * mm, "待つ女は負ける", 17, 5, CREAM)
-        _vertical(c, W - 56 * mm, H - 24 * mm, "初視", 38, 9, NAVY)
-        _vertical(c, W - 74 * mm, H - 24 * mm, "贈り先", 11, 2, GRAY)
+        c.drawImage(str(BG_PATH), ox, 0, BG_SIZE[0] * s, H)
         who = name + "さん"
-        size = 20 if len(who) <= 7 else max(11, int(120 / len(who)))
-        _vertical(c, W - 86 * mm, H - 32 * mm, who, size, 3, NAVY)
-        _vertical(c, 23 * mm, H - 24 * mm, wareki(d), 11, 2, GRAY)
-        # 写真（丸く切り抜く）
-        r = 25 * mm
-        cx, cy = W / 2, 75 * mm
-        c.saveState()
+        size = max(7, min(19, 432 * s / (1.42 * len(who))))  # 写真の輪にかからない長さに収める
+        _vertical(c, px(413), py(258), who, size, size * .42, NAVY)
+        _vertical(c, px(160), py(184), wareki(d), 10, 1.4, DATE_INK)
+        # 写真（画像の金の輪の内側に丸く切り抜く）
+        r = 181 * s
+        cx, cy = px(520), py(865)
         path = c.beginPath()
         path.circle(cx, cy, r)
         c.clipPath(path, stroke=0, fill=0)
         c.drawImage(str(FACE_PATH), cx - r, cy - r, 2 * r, 2 * r)
-        c.restoreState()
-        c.setStrokeColor(GOLD)
-        c.setLineWidth(1.4)
-        c.circle(cx, cy, r, stroke=1, fill=0)
-        c.setFillColor(GRAY)
-        c.setFont(FONT, 10)
-        c.drawCentredString(W / 2, 37 * mm, "夜の店で学んだ婆さん")
-        c.setFillColor(NAVY)
-        c.setFont(FONT, 19)
-        c.drawCentredString(W / 2, 27 * mm, "叶 ば ぁ")
         c.restoreState()
     return draw
 
