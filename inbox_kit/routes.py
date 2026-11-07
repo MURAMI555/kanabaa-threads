@@ -432,6 +432,9 @@ def _hatsumi_routes():
     bp.add_url_rule("/hatsumi", "hatsumi_page", hatsumi_auto.page)
     bp.add_url_rule("/hatsumi/act", "hatsumi_act", hatsumi_auto.act, methods=["POST"])
     bp.add_url_rule("/hatsumi/status", "hatsumi_status", hatsumi_auto.status)
+    bp.add_url_rule("/hatsumi/pdf", "hatsumi_pdf_preview", hatsumi_auto.pdf_preview)
+    bp.add_url_rule("/hatsumi/mihon.pdf", "hatsumi_pdf_mihon", hatsumi_auto.pdf_mihon)
+    bp.add_url_rule("/h/<token>.pdf", "hatsumi_pdf_public", hatsumi_auto.pdf_public)
 
 
 _hatsumi_routes()

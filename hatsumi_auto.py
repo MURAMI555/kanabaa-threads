@@ -12,6 +12,8 @@
     D+2 21時台 ⑦迷う人へ（11/03 まりの2通目を移した。「昨日の案内」とつながるので⑥の翌日）（⑥〜⑧とも、初視のあとに返事が来ていたら送らない）
     D+3 21時台 ⑦の2 違い（11/03 まりの3通目。初視と本鑑定の違い）
     D+7 21時台 ⑧前の日（同じ）
+・初視は表紙つきのPDFにして、LINEにはリンクを送る（2026/11/07〜・hatsumi_pdf.py）。リンクは推測できない文字列で、送った日から30日で開けなくなる。
+  PDFは保存せず、開かれた時に本文から作る。PDFが作れない時と KANABAA_HATSUMI_PDF=0 の時は、これまでどおり本文をそのまま送る
 ・初視がチェックに引っかかった・書けなかった時は「保留」。③④も初視も送らず、みかちゃんに知らせる
 ・止める：/hatsumi?pin=…（受付箱と同じ合言葉）の「止める」。全部止めるのは Render の KANABAA_HATSUMI_AUTO=0
 ・型（スキルの kata.md など）は公開リポに置けないので、受付箱シートの cfg:hatsumi に置く
@@ -22,6 +24,7 @@ import html
 import os
 import random
 import re
+import secrets
 import threading
 import traceback
 from datetime import datetime, timedelta
@@ -47,7 +50,15 @@ TONIGHT_GATHER = timedelta(minutes=10)
 LATE = {"asa": 3, "yu": 3, "hatsumi": 2, "minaoshi": 3, "mayou": 3, "chigai": 3, "mae": 3}  # 予定から何時間遅れまでなら送るか（再起動で遅れた時）
 PAGE = "https://kanabaa-hatsumi.netlify.app/honkantei/?d={d}"
 PAY_LIMITED = "https://kanabaa.stores.jp/items/6aef248ed168fb2c9f0d96f7"   # 4,980円（デジタル商品・住所入力なし 2026/11/07）
+OLD_PAY = "https://kanabaa.stores.jp/items/6ae1ff617851cfc94d4f3d59"   # 11/07 より前に書いた下書きに入っている旧リンク
 SITE = "https://kanabaa-threads.onrender.com"
+PDF_DAYS = 30                    # 初視PDFのリンクが開ける日数
+HATSUMI_MSG = ("{n}さん、初視ができたよ。\n\n"
+               "婆さんが視たことを、あんたの分だけ1冊にまとめたでね。\n"
+               "一人になれる時間に開いて、最後まで読んでおくれ。\n"
+               "▼\n{url}\n\n"
+               "読み返したい時のために、スマホに保存しておきな。\n"
+               "うまく開けなかったら、このトークに「開けない」と送っておくれ。")
 
 ASA = ("{n}さん、昨夜はちゃんと眠れたかい。\n\n"
        "あんたが書いてくれた言葉、婆さんに届いてるよ。\n今、あんたの分を視てるところだ。\n\n"
@@ -256,6 +267,26 @@ def _push(uid: str, text: str):
                       headers={"Authorization": f"Bearer {tok}"},
                       json={"to": uid, "messages": [{"type": "text", "text": text[:5000]}]})
     r.raise_for_status()
+
+
+def _hatsumi_message(it: dict, a: dict, now: datetime) -> str:
+    """初視として送る文。PDFのリンクを送る。PDFが作れない時はこれまでどおり本文をそのまま送る"""
+    a["draft"] = a["draft"].replace(OLD_PAY, PAY_LIMITED)
+    if os.environ.get("KANABAA_HATSUMI_PDF", "1") == "0":
+        return a["draft"]
+    try:
+        import hatsumi_pdf
+        hatsumi_pdf.render(a["draft"], a["name"], a["plan"]["d"])  # 先に作ってみて、失敗なら本文で送る
+        a["pdf_token"] = a.get("pdf_token") or secrets.token_urlsafe(18)
+        a["pdf_at"] = _s(now)
+        store.put(it)  # リンクが開けるように、送る前に書いておく
+        # openExternalBrowser＝LINEの中の画面だとPDFを開けない端末があるので、外のブラウザで開く
+        return HATSUMI_MSG.format(n=a["name"], url=f"{SITE}/h/{a['pdf_token']}.pdf?openExternalBrowser=1")
+    except Exception as e:  # noqa: BLE001
+        traceback.print_exc()
+        note(f"{it['id'][-6:]} の初視PDFを作れなかった: {e}")
+        tell_mika(f"【叶ばぁ】{a['name']}さんの初視をPDFにできなかったので、本文をそのまま送るよ（{str(e)[:80]}）")
+        return a["draft"]
 
 
 # ---------------- 受付 ----------------
@@ -478,11 +509,11 @@ def _step(it, a, items, now):
         if key in FOLLOW and _replied_after(it, a["sent"]["hatsumi"]):
             for k in FOLLOW:
                 a.setdefault("skipped", {})[k] = "返事が来た"
-            tell_mika(f"【叶ばぁ】{a['name']}さんから初視のあとに返事が来てるよ。⑥〜⑧の自動は止めたから、返事は手でね\nhttps://chat.line.biz/")
+            tell_mika(f"【叶ばぁ】{a['name']}さんから初視のあとに返事が来てるよ。⑥〜⑧の自動は止めたから、返事は手でね（「開けない」と来ていたら、{SITE}/hatsumi の本文を貼って送ってね）\nhttps://chat.line.biz/")
             break
         n = a["name"]
         text = {"asa": ASA, "yu": YU, "minaoshi": MINAOSHI, "mayou": MAYOU, "chigai": CHIGAI, "mae": MAE}.get(key, "").format(n=n, d=a["plan"]["d"]) \
-            if key != "hatsumi" else a["draft"]
+            if key != "hatsumi" else _hatsumi_message(it, a, now)
         try:
             _push(it["id"][5:], text)
             a["sent"][key] = _s(now)
@@ -496,6 +527,59 @@ def _step(it, a, items, now):
     if all(k in a["sent"] or k in a.get("skipped", {}) or k not in a["plan"] for k, _ in STAGES):  # ⑥を足す前の予定には minaoshi が無い
         a["state"] = "done"
     store.put(it)
+
+
+# ---------------- 初視PDF ----------------
+
+def _pdf_response(pdf: bytes):
+    r = make_response(pdf)
+    r.headers.update({"Content-Type": "application/pdf", "Content-Disposition": 'inline; filename="hatsumi.pdf"',
+                      "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow", "Referrer-Policy": "no-referrer"})
+    return r
+
+
+def _gone(text: str, code: int):
+    r = make_response(f'<!doctype html><html lang=ja><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">'
+                      f'<meta name=robots content=noindex><title>叶ばぁ</title><body style="font-family:serif;padding:32px 20px;'
+                      f'background:#f2ece1;color:#26354a;line-height:1.9">{text}</body></html>', code)
+    r.headers.update({"X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store"})
+    return r
+
+
+def pdf_public(token: str):  # /h/<token>.pdf（LINEで送ったリンク。合言葉なし・文字列を知っている人だけ）
+    found = None
+    if store.configured() and re.fullmatch(r"[A-Za-z0-9_-]{20,}", token):
+        for it in store.all_items(max_age=60).values():
+            a = it.get("auto") or {}
+            if a.get("pdf_token") and secrets.compare_digest(a["pdf_token"], token):
+                found = a
+                break
+    if not found or not found.get("pdf_at") or not found.get("draft"):
+        return _gone("このリンクは開けないよ。お手数だけど、婆さんのLINEに「開けない」と送っておくれ。", 404)
+    if _now() - _t(found["pdf_at"]) > timedelta(days=PDF_DAYS):
+        return _gone("このリンクは期限が過ぎて開けなくなったよ。読み返したい時は、婆さんのLINEに一言送っておくれ。", 410)
+    import hatsumi_pdf
+    return _pdf_response(hatsumi_pdf.render(found["draft"], found.get("name") or "あんた", found["plan"]["d"]))
+
+
+def pdf_preview():  # /hatsumi/pdf?id=…（みかちゃんが送る前に見る。合言葉あり）
+    if not _pin_ok():
+        abort(401)
+    it = store.get(request.args.get("id", ""))
+    a = (it or {}).get("auto") or {}
+    if not a.get("draft"):
+        abort(404)
+    import hatsumi_pdf
+    d = (a.get("plan") or {}).get("d") or _now().strftime("%Y%m%d")
+    return _pdf_response(hatsumi_pdf.render(a["draft"].replace(OLD_PAY, PAY_LIMITED), a.get("name") or "あんた", d))
+
+
+def pdf_mihon():  # /hatsumi/mihon.pdf（架空の「ゆいさん」の見本。スマホで開けるかの確認用。お客様の情報は入っていない）
+    m = re.search(r"■ 見本.*?```\n(.*?)```", _kata() if store.configured() else "", re.S)
+    if not m:
+        abort(404)
+    import hatsumi_pdf
+    return _pdf_response(hatsumi_pdf.render(m.group(1), "ゆい", _now().strftime("%Y%m%d")))
 
 
 # ---------------- 画面 /hatsumi ----------------
@@ -532,6 +616,8 @@ def page():  # /hatsumi（inbox_kit/routes.py の bp に付ける）
             acts += btn("ready", "このまま送る予定に戻す")
         acts += btn("rewrite", "書き直す")
         draft = a.get("draft", "")
+        if draft:
+            acts += f' <a href="hatsumi/pdf?id={iid}" target="_blank">PDFを見る</a>'
         ed = (f'<form method=post action="hatsumi/act"><input type=hidden name=id value="{iid}"><input type=hidden name=op value=save>'
               f'<textarea name=draft rows=18>{e(draft)}</textarea><button>直したのを保存</button> <small>{len(draft)}字</small></form>') if draft else ""
         msgs = "<br>".join(e(m["text"]) for m in it.get("messages", [])[-6:])
@@ -550,7 +636,7 @@ textarea{{width:100%;box-sizing:border-box;font-size:15px}} button{{font-size:14
 form.in{{display:inline}} .warn{{color:#c33;font-size:13px}} ul{{padding-left:18px;margin:6px 0}}</style></head><body>
 <h1 style="font-size:18px">叶ばぁ 初視の自動</h1>
 <p><small>自動：{'動いている' if enabled() else '止まっている（設定が足りないか KANABAA_HATSUMI_AUTO=0）'}。
-初視はその日の21時台に送る。止めたい人は20時までに「止める」。</small></p>{body}
+初視はその日の21時台に、PDFのリンクで送る。止めたい人は20時までに「止める」。</small></p>{body}
 <p><small>{logs}</small></p></body></html>""")
 
 
