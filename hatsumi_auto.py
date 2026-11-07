@@ -12,6 +12,8 @@
     D+2 21時台 ⑦迷う人へ（11/03 まりの2通目を移した。「昨日の案内」とつながるので⑥の翌日）（⑥〜⑧とも、初視のあとに返事が来ていたら送らない）
     D+3 21時台 ⑦の2 違い（11/03 まりの3通目。初視と本鑑定の違い）
     D+7 21時台 ⑧前の日（同じ）
+・2026/11/07〜 初視だけはみかちゃんが手で送る（みかちゃん決定）。/hatsumi/today に今日送る分の文とリンクをまとめ、「送った」を押すと⑥〜⑧の起点になる。
+  翌朝・夕方と⑥〜⑧は自動のまま。KANABAA_HATSUMI_HAND=0 で初視も自動に戻る
 ・初視は表紙つきのPDFにして、LINEにはリンクを送る（2026/11/07〜・hatsumi_pdf.py）。リンクは推測できない文字列で、送った日から30日で開けなくなる。
   PDFは保存せず、開かれた時に本文から作る。PDFが作れない時と KANABAA_HATSUMI_PDF=0 の時は、これまでどおり本文をそのまま送る
 ・初視がチェックに引っかかった・書けなかった時は「保留」。③④も初視も送らず、みかちゃんに知らせる
@@ -269,6 +271,10 @@ def _push(uid: str, text: str):
     r.raise_for_status()
 
 
+def by_hand() -> bool:
+    return os.environ.get("KANABAA_HATSUMI_HAND", "1") != "0"
+
+
 def _hatsumi_message(it: dict, a: dict, now: datetime) -> str:
     """初視として送る文。PDFのリンクを送る。PDFが作れない時はこれまでどおり本文をそのまま送る"""
     a["draft"] = a["draft"].replace(OLD_PAY, PAY_LIMITED)
@@ -425,6 +431,10 @@ def _prepare(it: dict, items: dict):
     if a["state"] == "ready" and p.get("tonight"):
         tell_mika(f"【叶ばぁ】{a['name']}さんの初視ができたよ（{len(a['draft'])}字・今夜{_tonight_count(items)}人目）。1時半に自動で送るよ。\n"
                   f"読む・直す・止めるのはここ\n{link}")
+    elif a["state"] == "ready" and by_hand():
+        tell_mika(f"【叶ばぁ】{a['name']}さんの初視ができたよ（{len(a['draft'])}字）。\n"
+                  f"{p['hatsumi'][5:10].replace('-', '/')} の夜に手で送ってね（翌朝・夕方のひとことは自動）。\n"
+                  f"送る文とリンクはここ\n{SITE}/hatsumi/today")
     elif a["state"] == "ready":
         tell_mika(f"【叶ばぁ】{a['name']}さんの初視ができたよ（{len(a['draft'])}字）。\n"
                   f"{p['hatsumi'][5:].replace('-', '/')} に自動で送るよ（翌朝・夕方のひとことも）。\n"
@@ -500,11 +510,19 @@ def _step(it, a, items, now):
         a["state"] = "done"
         store.put(it)
         return
+    hand = by_hand() and "hatsumi" not in a["sent"] and "hatsumi" not in a.get("skipped", {})
+    if hand and a["plan"].get("hatsumi") and now - _t(a["plan"]["hatsumi"]) > timedelta(hours=12) and not a.get("hand_late"):
+        a["hand_late"] = _s(now)  # 翌朝になっても送っていない時だけ知らせる（1回）
+        tell_mika(f"【叶ばぁ】{a['name']}さんの初視がまだ送れていないよ。\n{SITE}/hatsumi/today")
+        store.put(it)
     for key, label in STAGES:
+        if key == "hatsumi" and hand:
+            continue  # 初視はみかちゃんが /hatsumi/today から手で送る
         if not _due(it, key, now):
             continue
         if key in FOLLOW and "hatsumi" not in a["sent"]:
-            a.setdefault("skipped", {})[key] = "初視を自動で送っていない"
+            if not hand:
+                a.setdefault("skipped", {})[key] = "初視を自動で送っていない"
             continue
         if key in FOLLOW and _replied_after(it, a["sent"]["hatsumi"]):
             for k in FOLLOW:
@@ -582,6 +600,81 @@ def pdf_mihon():  # /hatsumi/mihon.pdf（架空の「ゆいさん」の見本。
     return _pdf_response(hatsumi_pdf.render(m.group(1), "ゆい", _now().strftime("%Y%m%d")))
 
 
+# ---------------- 手で送る分 /hatsumi/today ----------------
+
+def _unsent(it: dict) -> bool:
+    a = it.get("auto") or {}
+    return (it.get("kind") == "line" and a.get("state") == "ready" and not a.get("stop") and a.get("draft")
+            and (a.get("plan") or {}).get("hatsumi") and "hatsumi" not in a.get("sent", {}) and "hatsumi" not in a.get("skipped", {}))
+
+
+def _hand_text(it: dict, a: dict) -> str:
+    """手で送る文。リンクは最初に作ったものを使い回す"""
+    if a.get("pdf_token") and os.environ.get("KANABAA_HATSUMI_PDF", "1") != "0":
+        return HATSUMI_MSG.format(n=a["name"], url=f"{SITE}/h/{a['pdf_token']}.pdf?openExternalBrowser=1")
+    return _hatsumi_message(it, a, _now())
+
+
+def today():  # /hatsumi/today（今日みかちゃんが手で送る初視のまとめ。合言葉あり）
+    from inbox_kit.routes import _set_pin
+    if not _pin_ok():
+        return make_response('<form><input name="pin" type="password" placeholder="合言葉"><button>開く</button></form>', 401)
+    e = html.escape
+    now = _now()
+    day = now.strftime("%Y-%m-%d")
+    items = [i for i in store.all_items(max_age=10).values() if i.get("kind") == "line" and i.get("auto")]
+    unsent = sorted((i for i in items if _unsent(i)), key=lambda i: i["auto"]["plan"]["hatsumi"])
+    pin = request.values.get("pin", "")
+    pin_input = f'<input type=hidden name=pin value="{e(pin)}">' if pin else ""
+    cards = []
+    for it in unsent:
+        a = it["auto"]
+        if a["plan"]["hatsumi"][:10] > day:
+            continue
+        text = _hand_text(it, a)
+        limit = datetime.strptime(a["plan"]["d"], "%Y%m%d") + timedelta(days=8)
+        late = "<b class=warn>送る日を過ぎているよ</b> " if a["plan"]["hatsumi"][:10] < day else ""
+        pdf = (f'<a class=btn href="{e(SITE)}/h/{e(a["pdf_token"])}.pdf" target="_blank">PDFを見る</a>'
+               if a.get("pdf_token") else '<b class=warn>PDFにできなかったので本文を送るよ</b>')
+        cards.append(f'<div class=card><p class=h>{late}{e(a["name"])}さん <small>LINEの名前 {e(it.get("name") or "")}</small></p>'
+                     f'<p><small>4,980円は{limit.month}/{limit.day}まで</small></p><textarea readonly rows=9>{e(text)}</textarea>'
+                     f'<p><button type=button class=copy>文をコピー</button> {pdf} <a class=btn href="https://chat.line.biz/" target="_blank">LINEを開く</a></p>'
+                     f'<form method=post action="act">{pin_input}<input type=hidden name=id value="{e(it["id"])}"><input type=hidden name=op value=sent>'
+                     f'<button class=done>送った</button></form></div>')
+    later = [f'{i["auto"]["plan"]["hatsumi"][5:10].replace("-", "/")} {e(i["auto"]["name"])}さん' for i in unsent if i["auto"]["plan"]["hatsumi"][:10] > day]
+    autos = []
+    for it in items:
+        a = it["auto"]
+        if a.get("state") != "ready" or a.get("stop"):
+            continue
+        for k, lab in STAGES:
+            at = (a.get("plan") or {}).get(k, "")
+            if k != "hatsumi" and at[:10] == day and k not in a.get("sent", {}) and k not in a.get("skipped", {}):
+                autos.append((at[11:], f'{at[11:]} {e(a.get("name") or "")}さん {lab}'))
+    hold = sum(1 for i in items if i["auto"].get("state") == "hold")
+    body = "".join(cards) or "<p>今日手で送る初視は、今のところ無いよ。</p>"
+    r = make_response(f"""<!doctype html><html lang=ja><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><meta name=robots content=noindex><title>今日送る初視</title>
+<style>body{{font-family:sans-serif;margin:0;padding:12px 16px;background:#f6f3ee;color:#222;font-size:15px}}
+.card{{background:#fff;border-radius:10px;padding:10px 12px;margin:12px 0}} .h{{font-weight:bold;margin:0 0 4px}} .h small{{font-weight:normal;color:#777}}
+p{{margin:6px 0}} textarea{{width:100%;box-sizing:border-box;font-size:14px}} .warn{{color:#c33}}
+button,.btn{{display:inline-block;font-size:15px;padding:9px 14px;margin:4px 4px 0 0;border:1px solid #bbb;border-radius:8px;background:#fafafa;color:#222;text-decoration:none}}
+.copy,.done{{background:#1f3350;color:#fff;border-color:#1f3350}} .done{{background:#06c755;border-color:#06c755;width:100%}}
+ul{{padding-left:18px;margin:6px 0;color:#555;font-size:14px}}</style></head><body>
+<h1 style="font-size:18px">今日送る初視 {sum(1 for i in unsent if i["auto"]["plan"]["hatsumi"][:10] <= day)}人</h1>
+<p><small>文をコピー → LINEで相手を開いて貼る → 送ったら「送った」を押す。⑥〜⑧はここから数えて自動で続くよ。</small></p>
+{body}
+{f'<p class=warn>保留の人が{hold}人いるよ。<a href="../hatsumi">直す画面へ</a></p>' if hold else ''}
+{'<h2 style="font-size:15px">明日からの初視（まだ送らない）</h2><ul>' + ''.join(f'<li>{x}</li>' for x in later) + '</ul>' if later else ''}
+{'<h2 style="font-size:15px">今日の自動（手で送らなくていいよ）</h2><ul>' + ''.join(f'<li>{x[1]}</li>' for x in sorted(autos)) + '</ul>' if autos else ''}
+<script>document.querySelectorAll('.copy').forEach(function(b){{b.onclick=function(){{
+var t=b.closest('.card').querySelector('textarea');t.select();t.setSelectionRange(0,99999);
+var ok=function(){{b.textContent='コピーしたよ';setTimeout(function(){{b.textContent='文をコピー'}},2000)}};
+if(navigator.clipboard){{navigator.clipboard.writeText(t.value).then(ok,function(){{document.execCommand('copy');ok()}})}}else{{document.execCommand('copy');ok()}}
+}}}});</script></body></html>""")
+    return _set_pin(r)
+
+
 # ---------------- 画面 /hatsumi ----------------
 
 def _pin_ok() -> bool:
@@ -636,7 +729,7 @@ textarea{{width:100%;box-sizing:border-box;font-size:15px}} button{{font-size:14
 form.in{{display:inline}} .warn{{color:#c33;font-size:13px}} ul{{padding-left:18px;margin:6px 0}}</style></head><body>
 <h1 style="font-size:18px">叶ばぁ 初視の自動</h1>
 <p><small>自動：{'動いている' if enabled() else '止まっている（設定が足りないか KANABAA_HATSUMI_AUTO=0）'}。
-初視はその日の21時台に、PDFのリンクで送る。止めたい人は20時までに「止める」。</small></p>{body}
+{'初視は手で送る。<a href="hatsumi/today">今日送る分はここ</a>。' if by_hand() else '初視はその日の21時台に、PDFのリンクで送る。止めたい人は20時までに「止める」。'}</small></p>{body}
 <p><small>{logs}</small></p></body></html>""")
 
 
@@ -647,6 +740,12 @@ def act():  # POST /hatsumi/act
     if not it or not it.get("auto"):
         abort(404)
     a, op = it["auto"], request.form.get("op")
+    if op == "sent":  # /hatsumi/today の「送った」
+        a["sent"]["hatsumi"] = _s(_now())
+        a["pdf_at"] = _s(_now())  # リンクの30日はここから数える
+        store.put(it)
+        note(f"{it['id'][-6:]} の初視を手で送った")
+        return redirect("today")
     if op == "stop":
         a["stop"] = _s(_now())
     elif op == "go":
