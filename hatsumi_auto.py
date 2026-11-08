@@ -11,6 +11,9 @@
     D+1 21時台 ⑥視直し（11/03 まりの翌日の一通を叶ばぁ口調に。霊視メモは要らない形）
     D+2 21時台 ⑦迷う人へ（11/03 まりの2通目を移した。「昨日の案内」とつながるので⑥の翌日）（⑥〜⑧とも、初視のあとに返事が来ていたら送らない）
     D+3 21時台 ⑦の2 違い（11/03 まりの3通目。初視と本鑑定の違い）
+    D+4 21時台 ⑦の3 よくある質問（11/08 みかちゃん「もっとスパンよく」で毎日1通に）
+    D+5 21時台 ⑦の4 読み返し（初視の手が止まるところ）
+    D+6 21時台 ⑦の5 あと2日（期限の日付つき）
     D+7 21時台 ⑧前の日（同じ）
 ・2026/11/07〜 初視だけはみかちゃんが手で送る（みかちゃん決定）。/hatsumi/today に今日送る分の文とリンクをまとめ、「送った」を押すと⑥〜⑧の起点になる。
   翌朝・夕方と⑥〜⑧は自動のまま。KANABAA_HATSUMI_HAND=0 で初視も自動に戻る
@@ -49,7 +52,7 @@ TONIGHT_FROM = JST.localize(datetime(2026, 11, 6, 23, 0))
 TONIGHT_SEND = JST.localize(datetime(2026, 11, 7, 1, 30))
 TONIGHT_MAX = 10
 TONIGHT_GATHER = timedelta(minutes=10)
-LATE = {"asa": 3, "yu": 3, "hatsumi": 2, "minaoshi": 3, "mayou": 3, "chigai": 3, "mae": 3}  # 予定から何時間遅れまでなら送るか（再起動で遅れた時）
+LATE = {"asa": 3, "yu": 3, "hatsumi": 2, "minaoshi": 3, "mayou": 3, "chigai": 3, "shitsumon": 3, "yomikaeshi": 3, "nokori": 3, "mae": 3}  # 予定から何時間遅れまでなら送るか（再起動で遅れた時）
 PAGE = "https://kanabaa-hatsumi.netlify.app/honkantei/?d={d}"
 PAY_LIMITED = "https://kanabaa.stores.jp/items/6aef248ed168fb2c9f0d96f7"   # 4,980円（デジタル商品・住所入力なし 2026/11/07）
 OLD_PAY = "https://kanabaa.stores.jp/items/6ae1ff617851cfc94d4f3d59"   # 11/07 より前に書いた下書きに入っている旧リンク
@@ -209,13 +212,92 @@ CHIGAI = ("{n}さん\n"
           "視てほしいか、\n"
           "読んで感じてみな。\n"
           "▼\n" + PAGE)
+# 2026/11/08 みかちゃん「追いLINEをもっとスパンよく」→ 空いていた D+4〜D+6 にも毎晩1通（毎日1通の流れ）
+SHITSUMON = ("{n}さん\n"
+             "\n"
+             "本鑑定のことで、\n"
+             "よく聞かれることを\n"
+             "まとめておくね。\n"
+             "\n"
+             "――何が届くの？\n"
+             "あんたのためだけに書いた\n"
+             "「次の一手」を、\n"
+             "このトークに届けるよ。\n"
+             "3,000〜4,000字くらいだ。\n"
+             "\n"
+             "――申し込んだら、どうなるの？\n"
+             "申し込んだ画面を\n"
+             "スクショして送っておくれ。\n"
+             "婆さんから4つだけ聞くから、\n"
+             "答えてくれたら\n"
+             "2〜3日で届けるでね。\n"
+             "\n"
+             "――払い方は？\n"
+             "カード、コンビニ、PayPay残高、\n"
+             "楽天ペイ、PayPal、atone が使えるよ。\n"
+             "\n"
+             "――相手のこと、うまく書けない\n"
+             "書ける分だけでいい。\n"
+             "まとまってなくていいよ。\n"
+             "\n"
+             "ほかに聞きたいことがあったら、\n"
+             "このトークに\n"
+             "そのまま送っておくれ。\n"
+             "▼\n" + PAGE)
+YOMIKAESHI = ("{n}さん\n"
+              "\n"
+              "初視、\n"
+              "もう一度\n"
+              "開いてみたかい。\n"
+              "\n"
+              "一回目は\n"
+              "目で読むもんだ。\n"
+              "\n"
+              "二回目は、\n"
+              "手が止まるところが\n"
+              "出てくる。\n"
+              "\n"
+              "そこが、\n"
+              "あんたが\n"
+              "いちばん\n"
+              "引っかかってるところだよ。\n"
+              "\n"
+              "本鑑定では、\n"
+              "その止まったところを、\n"
+              "なんで止まるのか、\n"
+              "どう動けばいいのか、\n"
+              "いつ動けばいいのか\n"
+              "まで視る。\n"
+              "\n"
+              "止まったところを\n"
+              "ひとことだけ\n"
+              "このトークに\n"
+              "送ってくれてもいいよ。\n"
+              "▼\n" + PAGE)
+NOKORI = ("{n}さん\n"
+          "\n"
+          "初視から8日間の\n"
+          "4,980円は、\n"
+          "{lm}月{ld}日の24時までだよ。\n"
+          "あと2日だ。\n"
+          "\n"
+          "急かすつもりはないけどね、\n"
+          "決めないまま過ぎる2日と、\n"
+          "決めて過ごす2日とでは、\n"
+          "同じ2日でも\n"
+          "違うもんだよ。\n"
+          "\n"
+          "受けるなら、\n"
+          "ここからどうぞ。\n"
+          "▼\n" + PAGE)
 MAE = ("{n}さん、婆さんからはこれで最後にするね。\n\n"
        "初視から8日間の4,980円は、明日の24時までだよ。\nそのあとも受けられるけど、25,000円になる。\n\n"
        "暮らしを削ってまで受けるもんじゃないから、今じゃないと思ったら、それでいい。\n"
        "初視に書いたことは本当のことだから、何度でも読み返しな。\n▼\n" + PAGE)
-STAGES = [("asa", "③翌朝"), ("yu", "④夕方"), ("hatsumi", "初視"), ("minaoshi", "⑥視直し"), ("mayou", "⑦迷う人へ"), ("chigai", "⑦の2違い"), ("mae", "⑧前の日")]
+STAGES = [("asa", "③翌朝"), ("yu", "④夕方"), ("hatsumi", "初視"), ("minaoshi", "⑥視直し"), ("mayou", "⑦迷う人へ"), ("chigai", "⑦の2違い"),
+          ("shitsumon", "⑦の3よくある質問"), ("yomikaeshi", "⑦の4読み返し"), ("nokori", "⑦の5あと2日"), ("mae", "⑧前の日")]
 NAME = dict(STAGES)
-FOLLOW = ("minaoshi", "mayou", "chigai", "mae")  # 初視のあとのフォロー（返事が来たら全部止める）
+FOLLOW = ("minaoshi", "mayou", "chigai", "shitsumon", "yomikaeshi", "nokori", "mae")  # 初視のあとのフォロー（返事が来たら全部止める）
 
 RULE = """公式LINEに届いた相談に、叶ばぁの「初視（はつみ）」＝無料鑑定書を1通だけ書く。
 下に渡す「型」（運用者のスキル・鑑定書の段の型・見本）のとおりに書く。型と口調の決まりがぶつかったら型が勝つ。
@@ -322,10 +404,29 @@ def _tonight_count(items) -> int:
 def _plan_tonight() -> dict:
     day = TONIGHT_SEND.date()
     return {"hatsumi": _s(TONIGHT_SEND), "tonight": True,
-            "minaoshi": _at(day + timedelta(days=1), 21, 0, 21, 30),
-            "mayou": _at(day + timedelta(days=2), 21, 0, 21, 30),
-            "chigai": _at(day + timedelta(days=3), 21, 0, 21, 30), "mae": _at(day + timedelta(days=7), 21, 0, 21, 30),
-            "d": day.strftime("%Y%m%d")}
+            **_follow(day), "d": day.strftime("%Y%m%d")}
+
+
+FOLLOW_DAYS = {"minaoshi": 1, "mayou": 2, "chigai": 3, "shitsumon": 4, "yomikaeshi": 5, "nokori": 6, "mae": 7}
+
+
+def _follow(day) -> dict:
+    """初視の日 day から、毎晩21時台に1通ずつ（D+1〜D+7）"""
+    return {k: _at(day + timedelta(days=n), 21, 0, 21, 30) for k, n in FOLLOW_DAYS.items()}
+
+
+def _add_new_follow(a: dict) -> bool:
+    """11/08 より前に予定を作った人にも、まだ先の D+4〜D+6 を足す（過ぎた分は足さない）"""
+    d = a["plan"].get("d")
+    if not d or "mae" not in a["plan"] or a.get("stop") or "返事が来た" in a.get("skipped", {}).values():
+        return False
+    day = datetime.strptime(d, "%Y%m%d").date()
+    added = False
+    for k, v in _follow(day).items():
+        if k in ("shitsumon", "yomikaeshi", "nokori") and k not in a["plan"] and _t(v) > _now():
+            a["plan"][k] = v
+            added = True
+    return added
 
 
 def _day_counts(items) -> dict:
@@ -356,10 +457,7 @@ def _plan(it: dict, items: dict) -> dict:
     while counts.get(day.isoformat(), 0) >= PER_DAY:
         day += timedelta(days=1)
     p = {"asa": _at(day, 8, 0, 8, 59), "yu": _at(day, 17, 0, 17, 59), "hatsumi": _at(day, 21, 0, 21, 40),
-         "minaoshi": _at(day + timedelta(days=1), 21, 0, 21, 30),
-         "mayou": _at(day + timedelta(days=2), 21, 0, 21, 30),
-         "chigai": _at(day + timedelta(days=3), 21, 0, 21, 30), "mae": _at(day + timedelta(days=7), 21, 0, 21, 30),
-         "d": day.strftime("%Y%m%d")}
+         **_follow(day), "d": day.strftime("%Y%m%d")}
     if day == uk.date() and uk.hour >= 5:  # 朝〜夕方に届いてその日に送る人は「昨夜は眠れたかい」の③翌朝を送らない。④夕方は届いて1時間たっていれば
         p.pop("asa")
         if _t(p["yu"]) < uk + timedelta(hours=1):
@@ -510,6 +608,8 @@ def _step(it, a, items, now):
         a["state"] = "done"
         store.put(it)
         return
+    if _add_new_follow(a):
+        store.put(it)
     hand = by_hand() and "hatsumi" not in a["sent"] and "hatsumi" not in a.get("skipped", {})
     if hand and a["plan"].get("hatsumi") and now - _t(a["plan"]["hatsumi"]) > timedelta(hours=12) and not a.get("hand_late"):
         a["hand_late"] = _s(now)  # 翌朝になっても送っていない時だけ知らせる（1回）
@@ -530,7 +630,10 @@ def _step(it, a, items, now):
             tell_mika(f"【叶ばぁ】{a['name']}さんから初視のあとに返事が来てるよ。⑥〜⑧の自動は止めたから、返事は手でね（「開けない」と来ていたら、{SITE}/hatsumi の本文を貼って送ってね）\nhttps://chat.line.biz/")
             break
         n = a["name"]
-        text = {"asa": ASA, "yu": YU, "minaoshi": MINAOSHI, "mayou": MAYOU, "chigai": CHIGAI, "mae": MAE}.get(key, "").format(n=n, d=a["plan"]["d"]) \
+        lim = datetime.strptime(a["plan"]["d"], "%Y%m%d") + timedelta(days=8)
+        text = {"asa": ASA, "yu": YU, "minaoshi": MINAOSHI, "mayou": MAYOU, "chigai": CHIGAI, "shitsumon": SHITSUMON,
+                "yomikaeshi": YOMIKAESHI, "nokori": NOKORI, "mae": MAE}.get(key, "").format(
+                    n=n, d=a["plan"]["d"], lm=lim.month, ld=lim.day) \
             if key != "hatsumi" else _hatsumi_message(it, a, now)
         try:
             _push(it["id"][5:], text)
