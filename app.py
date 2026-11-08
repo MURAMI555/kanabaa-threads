@@ -27,6 +27,9 @@ from schedule_insta import INSTA_POSTS
 
 JST = pytz.timezone("Asia/Tokyo")
 LATE_LIMIT = timedelta(minutes=30)
+# 失敗した枠は10分おきにやり直す（枠の時刻から90分まで）。11/05 麗子22:24 は Threads が1時間ほど断っていて、1回の失敗で丸ごと抜けた
+RETRY_EVERY = timedelta(minutes=10)
+RETRY_LIMIT = timedelta(minutes=90)
 IMG_BASE = os.environ.get("IMG_BASE", "").rstrip("/")  # 例: https://raw.githubusercontent.com/MURAMI555/kanabaa-threads/main/img
 REEL_BASE = os.environ.get("REEL_BASE", "https://murami555.github.io/kanabaa-threads/reels").rstrip("/")  # リールの動画（docs/reels/）。raw は octet-stream なので Pages を使う
 app = Flask(__name__)
@@ -68,7 +71,7 @@ def _already_on_threads(first_text: str, at: datetime, account: str) -> bool:
             if abs(ts - at) < timedelta(hours=12):
                 return True
     except Exception as e:  # noqa: BLE001
-        _note(f"[{account}] 直近投稿の確認に失敗（続行）: {e}")
+        _note(f"[{account}] 直近投稿の確認に失敗（続行）: {str(e).split('?')[0]}")  # URLの後ろの鍵をログに出さない
     return False
 
 
@@ -113,8 +116,13 @@ def post_due():
         for slot, parts in sorted(POSTS.items(), key=lambda kv: split_slot(kv[0])[1]):
             account, _ = split_slot(slot)
             at = slot_time(slot)
-            if not (at <= now < at + LATE_LIMIT) or slot in _done:
+            prev = _done.get(slot)
+            if prev and prev.get("status") == "error":
+                if not (now < at + RETRY_LIMIT and now >= datetime.fromisoformat(prev["at"]) + RETRY_EVERY):
+                    continue
+            elif not (at <= now < at + LATE_LIMIT) or prev:
                 continue
+            tries = (prev or {}).get("tries", 0) + 1
             if not threads_api.configured(account):
                 _done[slot] = {"status": "skipped(no token)", "account": account, "at": now.isoformat()}
                 _note(f"[{account}] {slot} はトークン未設定なので飛ばした")
@@ -130,8 +138,8 @@ def post_due():
                 _note(f"[{account}] {slot} 投稿した {ids}")
             except Exception as e:  # noqa: BLE001
                 traceback.print_exc()
-                _done[slot] = {"status": "error", "account": account, "error": str(e)[:300], "at": now.isoformat()}
-                _note(f"[{account}] {slot} 投稿に失敗: {e}")
+                _done[slot] = {"status": "error", "account": account, "error": str(e).split("?")[0][:300], "at": now.isoformat(), "tries": tries}
+                _note(f"[{account}] {slot} 投稿に失敗（{tries}回目・{int(RETRY_LIMIT.total_seconds() // 60)}分まで10分おきにやり直す）: {str(e).split('?')[0]}")
 
 
 def refresh_weekly():
