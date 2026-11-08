@@ -12,7 +12,7 @@ import requests
 
 BASE = "https://graph.threads.net/v1.0"
 DEFAULT = "kanabaa"
-ACCOUNTS = ["kanabaa", "mio", "tsumugi", "rin", "ritsu", "reiko"]
+ACCOUNTS = ["kanabaa", "mio", "tsumugi", "rin", "ritsu", "reiko", "kyoka"]
 _mem_token: dict = {}  # account -> 更新後のトークン（プロセスが生きている間だけ）
 
 

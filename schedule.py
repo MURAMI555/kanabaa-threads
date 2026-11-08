@@ -196,7 +196,8 @@ POSTS = {
 # キャラ4本の予定表を合流する（2026/10/22）。ファイルが無いキャラは飛ばす。
 # キーは "mio@…" のようにキャラ名つきなので叶ばぁの枠とぶつからない。トークン未設定のキャラは app.py が飛ばす。
 for _name, _var in (("schedule_mio", "POSTS_MIO"), ("schedule_tsumugi", "POSTS_TSUMUGI"),
-                    ("schedule_rin", "POSTS_RIN"), ("schedule_reiko", "POSTS_REIKO")):  # 律(schedule_ritsu)は10/24 麗子と入れ替え
+                    ("schedule_rin", "POSTS_RIN"), ("schedule_reiko", "POSTS_REIKO"),  # 律(schedule_ritsu)は10/24 麗子と入れ替え
+                    ("schedule_kyoka", "POSTS_KYOKA")):
     try:
         POSTS.update(getattr(__import__(_name), _var))
     except ImportError:
