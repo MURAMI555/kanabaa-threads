@@ -17,6 +17,9 @@
     D+7 21時台 ⑧前の日（同じ）
 ・2026/11/07〜 初視だけはみかちゃんが手で送る（みかちゃん決定）。/hatsumi/today に今日送る分の文とリンクをまとめ、「送った」を押すと⑥〜⑧の起点になる。
   翌朝・夕方と⑥〜⑧は自動のまま。KANABAA_HATSUMI_HAND=0 で初視も自動に戻る
+・2026/11/10〜 初視も自動に戻した（みかちゃん「勝手に送ってほしい」）。既定が自動で、KANABAA_HATSUMI_HAND=1 で手送りに戻る（/hatsumi/today はそのまま使える）。
+  自動なのに初視の時間を2時間以上過ぎていた人（サーバーの入れ替え中・手送りから自動へ切り替えた直後など）は、次の21時台に送り直す予定にする。
+  日付が変わる時は本文の期限の日付とリンクも直して、みかちゃんに知らせる（もう手で送っていたら止めてもらう）。送り直しは2回まで、それを超えたら手で
 ・初視は表紙つきのPDFにして、LINEにはリンクを送る（2026/11/07〜・hatsumi_pdf.py）。リンクは推測できない文字列で、送った日から30日で開けなくなる。
   PDFは保存せず、開かれた時に本文から作る。PDFが作れない時と KANABAA_HATSUMI_PDF=0 の時は、これまでどおり本文をそのまま送る
 ・初視がチェックに引っかかった・書けなかった時は「保留」。③④も初視も送らず、みかちゃんに知らせる
@@ -354,7 +357,8 @@ def _push(uid: str, text: str):
 
 
 def by_hand() -> bool:
-    return os.environ.get("KANABAA_HATSUMI_HAND", "1") != "0"
+    """初視をみかちゃんが手で送るか。2026/11/10〜 既定は自動（みかちゃん「勝手に送ってほしい」）。KANABAA_HATSUMI_HAND=1 で手送り"""
+    return os.environ.get("KANABAA_HATSUMI_HAND", "0") == "1"
 
 
 def _hatsumi_message(it: dict, a: dict, now: datetime) -> str:
@@ -549,6 +553,49 @@ def _replied_after(it: dict, t: str) -> bool:
     return any(m["at"] > t for m in it.get("messages", []))
 
 
+REPLAN_MAX = 2  # 遅れた初視を送り直す回数の上限（これを超えたら手で送ってもらう）
+
+
+def _replan_late(it: dict, a: dict, now: datetime) -> bool:
+    """自動なのに初視の時間を2時間以上過ぎていた（サーバーの入れ替え中・手送りから自動へ切り替えた直後など）。
+    次の21時台に送り直す予定にする（今日の21時より前なら今日、過ぎていれば明日）。日付が変わる時は本文の期限の日付とリンクも直す。
+    送り直すのは REPLAN_MAX 回まで。超えたら False（呼び元が「遅れた」にして、みかちゃんに手で送ってもらう）"""
+    if a.get("replanned", 0) >= REPLAN_MAX:
+        return False
+    day = now.date() if now.hour < 21 else now.date() + timedelta(days=1)
+    old_d, new_d = a["plan"]["d"], day.strftime("%Y%m%d")
+    if new_d != old_d:
+        old_lim = datetime.strptime(old_d, "%Y%m%d") + timedelta(days=8)
+        new_lim = datetime.strptime(new_d, "%Y%m%d") + timedelta(days=8)
+        draft = (a["draft"].replace(kigen_text(old_d), kigen_text(new_d))
+                 .replace(PAGE.format(d=old_d), PAGE.format(d=new_d))
+                 .replace(f"{old_lim.month}月{old_lim.day}日の24時", f"{new_lim.month}月{new_lim.day}日の24時"))
+        a["plan"]["d"] = new_d
+        if PAGE.format(d=new_d) not in draft or f"{new_lim.month}月{new_lim.day}日" not in draft:
+            try:
+                write(it)  # 期限の文が型どおり入っていなかった→新しい日付で書き直す
+            except Exception as e:  # noqa: BLE001
+                a["hits"] = [f"書けなかった: {e}"[:200]]
+            if a.get("hits"):
+                a["state"] = "hold"
+                store.put(it)
+                tell_mika(f"【叶ばぁ】{a['name']}さんの初視は送る時間を過ぎていて、日付を直して書き直したらチェックに引っかかったので止めてるよ。\n"
+                          f"理由 {' / '.join(a['hits'])}\nここで直して「送る予定に戻す」か、手で送ってね\n{SITE}/hatsumi")
+                return True
+        else:
+            a["draft"] = draft
+    a["plan"].pop("tonight", None)
+    a["plan"].update(hatsumi=_at(day, 21, 0, 21, 40), d=new_d, **_follow(day))
+    for k in FOLLOW:
+        a.get("skipped", {}).pop(k, None)
+    a["replanned"] = a.get("replanned", 0) + 1
+    store.put(it)
+    note(f"{it['id'][-6:]} の初視は時間を過ぎていたので {new_d} の夜に送り直す")
+    tell_mika(f"【叶ばぁ】{a['name']}さんの初視は送る時間を過ぎていたので、{day.month}/{day.day} の夜に自動で送り直すよ。\n"
+              f"もう手で送ってたら、ここで止めてね\n{SITE}/hatsumi")
+    return True
+
+
 def _due(it: dict, key: str, now: datetime):
     a = it["auto"]
     at = a["plan"].get(key)
@@ -558,6 +605,8 @@ def _due(it: dict, key: str, now: datetime):
     if now < t:
         return False
     if now - t > timedelta(hours=LATE[key]):
+        if key == "hatsumi" and not by_hand() and _replan_late(it, a, now):
+            return False
         a.setdefault("skipped", {})[key] = "遅れた"
         note(f"{it['id'][-6:]} の{NAME[key]}は時間を過ぎたので送らなかった")
         if key == "hatsumi":
@@ -874,7 +923,7 @@ def act():  # POST /hatsumi/act
 def status():  # /hatsumi/status
     """合言葉なしで見られる様子（名前・中身は出さない）"""
     items = [i for i in store.all_items().values() if i.get("kind") == "line" and i.get("auto")] if store.configured() else []
-    return {"enabled": enabled(), "store": store.configured(), "ai": drafts.configured(),
+    return {"enabled": enabled(), "hand": by_hand(), "store": store.configured(), "ai": drafts.configured(),
             "notify": bool(os.environ.get("NOTIFY_URL")), "kata": bool(_kata()) if store.configured() else False,
             "people": [{"state": i["auto"].get("state"), "d": (i["auto"].get("plan") or {}).get("d"),
                         "sent": sorted(i["auto"].get("sent", {}))} for i in items],
