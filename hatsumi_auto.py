@@ -698,6 +698,8 @@ def page():  # /hatsumi（inbox_kit/routes.py の bp に付ける）
         acts = btn("go", "止めるのをやめる") if a.get("stop") else btn("stop", "止める")
         if a.get("state") == "hold":
             acts += btn("ready", "このまま送る予定に戻す")
+        if "hatsumi" in a.get("skipped", {}) and "hatsumi" not in a.get("sent", {}):
+            acts += btn("resend", "初視をもう一度自動で送る")
         acts += btn("rewrite", "書き直す")
         draft = a.get("draft", "")
         if draft:
@@ -745,6 +747,15 @@ def act():  # POST /hatsumi/act
         a["draft"] = request.form.get("draft", "").replace("\r\n", "\n").strip()
         a["hits"] = check(a["draft"])
         a["edited"] = _s(_now())
+    elif op == "resend":  # 自動送信が失敗した人へ、次の見回りでもう一度自動で送る
+        if "hatsumi" in a.get("sent", {}):
+            return redirect("../hatsumi")
+        a.get("skipped", {}).pop("hatsumi", None)
+        a["hatsumi_fail"] = 0
+        a["state"] = "ready"
+        a.pop("stop", None)
+        a["plan"]["hatsumi"] = _s(_now() - timedelta(minutes=1))
+        note(f"{it['id'][-6:]} の初視を送り直しに戻した")
     elif op == "ready":
         a["state"] = "ready"
         a["hits"] = []
