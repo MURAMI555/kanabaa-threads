@@ -34,6 +34,7 @@ import random
 import re
 import secrets
 import threading
+import time
 import traceback
 from datetime import datetime, timedelta
 
@@ -175,10 +176,15 @@ def tell_mika(text: str):
 
 def _push(uid: str, text: str):
     tok = os.environ.get("LINE_CHANNEL_ACCESS_TOKEN", "")
-    r = requests.post("https://api.line.me/v2/bot/message/push", timeout=20,
-                      headers={"Authorization": f"Bearer {tok}"},
-                      json={"to": uid, "messages": [{"type": "text", "text": text[:5000]}]})
-    r.raise_for_status()
+    for n in range(3):  # 429（混み合い）は待って3回まで撃ち直す。月の上限超えは待っても無駄
+        r = requests.post("https://api.line.me/v2/bot/message/push", timeout=20,
+                          headers={"Authorization": f"Bearer {tok}"},
+                          json={"to": uid, "messages": [{"type": "text", "text": text[:5000]}]})
+        if r.status_code != 429 or "monthly limit" in r.text.lower() or n == 2:
+            break
+        time.sleep(min(30, int(r.headers.get("Retry-After", "0") or 0) or 8 * (n + 1)))
+    if not r.ok:
+        raise RuntimeError(f"{r.status_code} {r.text[:150]}")
 
 
 def by_hand() -> bool:
@@ -517,8 +523,15 @@ def _step(it, a, items, now):
         except Exception as e:  # noqa: BLE001
             note(f"{it['id'][-6:]} への{label}に失敗: {e}")
             if key == "hatsumi":
-                tell_mika(f"【叶ばぁ】{n}さんへの初視の自動送信に失敗した（{str(e)[:80]}）。手で送ってね")
-                a.setdefault("skipped", {})["hatsumi"] = "失敗"
+                es = str(e)
+                a["hatsumi_fail"] = a.get("hatsumi_fail", 0) + 1
+                retry = es.startswith("429") and "monthly limit" not in es.lower() and a["hatsumi_fail"] < 4
+                if retry:  # 混み合いだけなら「失敗」にせず、次の見回りでもう一度送る
+                    if a["hatsumi_fail"] == 1:
+                        tell_mika(f"【叶ばぁ】{n}さんへの初視、LINEが混んでて送れなかった。次の見回りで自動でやり直すよ（手出し不要）")
+                else:
+                    tell_mika(f"【叶ばぁ】{n}さんへの初視の自動送信に失敗した（{es[:80]}）。手で送ってね")
+                    a.setdefault("skipped", {})["hatsumi"] = "失敗"
         break  # 1回の見回りで1人1通まで
     if all(k in a["sent"] or k in a.get("skipped", {}) or k not in a["plan"] for k, _ in STAGES):  # ⑥を足す前の予定には minaoshi が無い
         a["state"] = "done"
