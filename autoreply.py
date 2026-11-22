@@ -511,6 +511,29 @@ def nenrei_reply(username: str, n: int, rnd: random.Random, used=()) -> str:
                       pick(TEASE, used, rnd)])
 
 
+ETO = ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"]
+TOSHINOSE = {  # 彼の生まれ年（西暦4桁）→ 干支 → 年の瀬（12月）の過ごし方の癖。言い切らず「〜やすい」で
+    "子": "子年の男は、年の瀬に段取りで頭がいっぱいになりやすい。連絡が事務的になっても、冷めたとは限らないよ。",
+    "丑": "丑年の男は、年末も自分のペースを崩さない。誘うなら、早めに日を1つだけ出しておきな。",
+    "寅": "寅年の男は、12月は外に出たがる。誘いが多い時期だから、あんたから先に1つ押さえておくといいね。",
+    "卯": "卯年の男は、年末の人混みで疲れやすい。会うなら、静かな店か家の近くが通りやすいよ。",
+    "辰": "辰年の男は、年の終わりに来年の大きな話をしたがる。その話にあんたが入ってるかを聞いておきな。",
+    "巳": "巳年の男は、年末に1人で考え込む時間が増えやすい。黙る日があっても、追いかけすぎないことだね。",
+    "午": "午年の男は、12月は予定を詰めこみやすい。会う日は、向こうが決める前にこっちから出しな。",
+    "未": "未年の男は、年末は家族や昔の仲間を優先しやすい。順番が後ろでも、あんたを外したわけじゃないよ。",
+    "申": "申年の男は、年の瀬も軽く楽しく過ごしたい。重い話は年明けに回すと、話が通りやすいね。",
+    "酉": "酉年の男は、年末に身の回りを片づけたくなる。そのぶん、あんたへの返事も短くなりやすいよ。",
+    "戌": "戌年の男は、年の瀬に義理を果たす人。付き合いで忙しくても、約束したことは守りやすいね。",
+    "亥": "亥年の男は、12月に勢いで決めることがある。急な誘いが来たら、乗るかどうかはあんたが決めな。",
+}
+
+
+def toshi_reply(username: str, y: int, rnd: random.Random, used=()) -> str:
+    eto = ETO[(y - 4) % 12]
+    return "\n".join([pick(HEAD, used, rnd).format(n=name_of(username)), f"{y}年生まれなら、{eto}年だね。" + TOSHINOSE[eto],
+                      pick(TEASE, used, rnd)])
+
+
 HIKIDASHI = [  # 連絡の間隔（日）→ あんたが入ってる引き出し
     (1, ["毎日なら、いちばん上の段だよ。手がすぐ届くところに、あんたを置いてる気配がある。",
          "毎日来るなら、上の段の手前だね。あとは、連絡の中身に用事以外が混じってるかを見な。"]),
@@ -616,6 +639,9 @@ def make_reply(username: str, comment: str, post_text: str, today: date, seed: s
         return None, "気持ちが重い言葉あり（手で）"
     if post_text.startswith(TONIGHT_MARK):
         return pick(TONIGHT, used, rnd).format(n=name_of(username)), ""
+    if "生まれ年" in post_text:  # 11/29 彼の生まれ年4桁 → 干支 → 年の瀬の過ごし方
+        n = number_of(comment)
+        return (toshi_reply(username, n, rnd, used), "") if n and 1940 <= n <= 2010 else (None, "生まれ年が読めない")
     if "彼の年齢" in post_text:  # 11/9 彼の年齢 → 抱えてるもの
         n = number_of(comment)
         return (nenrei_reply(username, n, rnd, used), "") if n and 15 <= n <= 120 else (None, "年齢が読めない")

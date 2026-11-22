@@ -427,6 +427,32 @@ def _replan_late(it: dict, a: dict, now: datetime) -> bool:
     return True
 
 
+def _redate(a: dict, day) -> bool:
+    """初視を送る日を day に変える。本文の期限・リンクと⑥〜⑨の予定も day から数え直す。本文の日付を直せなかったら False"""
+    old_d, new_d = a["plan"]["d"], day.strftime("%Y%m%d")
+    ok = True
+    if new_d != old_d:
+        old_lim = datetime.strptime(old_d, "%Y%m%d") + timedelta(days=8)
+        new_lim = datetime.strptime(new_d, "%Y%m%d") + timedelta(days=8)
+        draft = (a["draft"].replace(kigen_text(old_d), kigen_text(new_d))
+                 .replace(PAGE.format(d=old_d), PAGE.format(d=new_d))
+                 .replace(f"{old_lim.month}月{old_lim.day}日の24時", f"{new_lim.month}月{new_lim.day}日の24時"))
+        if PAGE.format(d=new_d) in draft and f"{new_lim.month}月{new_lim.day}日" in draft:
+            a["draft"] = draft
+        else:
+            ok = False
+    a["plan"].pop("tonight", None)
+    a["plan"].update(d=new_d, **_follow(day))
+    for k in FOLLOW:
+        a.get("skipped", {}).pop(k, None)
+    return ok
+
+
+def _hand(a: dict) -> bool:
+    """この人の初視を手で送るか。全体が手送り（KANABAA_HATSUMI_HAND=1）か、LINEの月の上限で自動が通らなかった人（hand_only）"""
+    return by_hand() or bool(a.get("hand_only"))
+
+
 def _due(it: dict, key: str, now: datetime):
     a = it["auto"]
     at = a["plan"].get(key)
@@ -436,7 +462,7 @@ def _due(it: dict, key: str, now: datetime):
     if now < t:
         return False
     if now - t > timedelta(hours=LATE[key]):
-        if key == "hatsumi" and not by_hand() and _replan_late(it, a, now):
+        if key == "hatsumi" and not _hand(a) and _replan_late(it, a, now):
             return False
         a.setdefault("skipped", {})[key] = "遅れた"
         note(f"{it['id'][-6:]} の{NAME[key]}は時間を過ぎたので送らなかった")
@@ -490,7 +516,7 @@ def _step(it, a, items, now):
         return
     if _add_new_follow(a):
         store.put(it)
-    hand = by_hand() and "hatsumi" not in a["sent"] and "hatsumi" not in a.get("skipped", {})
+    hand = _hand(a) and "hatsumi" not in a["sent"] and "hatsumi" not in a.get("skipped", {})
     if hand and a["plan"].get("hatsumi") and now - _t(a["plan"]["hatsumi"]) > timedelta(hours=12) and not a.get("hand_late"):
         a["hand_late"] = _s(now)  # 翌朝になっても送っていない時だけ知らせる（1回）
         tell_mika(f"【叶ばぁ】{a['name']}さんの初視がまだ送れていないよ。\n{SITE}/hatsumi/today")
@@ -526,7 +552,12 @@ def _step(it, a, items, now):
                 es = str(e)
                 a["hatsumi_fail"] = a.get("hatsumi_fail", 0) + 1
                 retry = es.startswith("429") and "monthly limit" not in es.lower() and a["hatsumi_fail"] < 4
-                if retry:  # 混み合いだけなら「失敗」にせず、次の見回りでもう一度送る
+                if "monthly limit" in es.lower():  # LINEの月の上限（無料は200通）。待っても通らないので、この人は手送りに回す（チャットで送る分は数に入らない）
+                    a["hand_only"] = _s(now)
+                    a["hatsumi_fail"] = 0
+                    tell_mika(f"【叶ばぁ】LINEの今月の自動送信の上限（無料200通）を使い切ったので、{n}さんの初視は自動で送れなかった。\n"
+                              f"ここの文をコピーして、LINEのチャットで手で送ってね（チャットは上限に入らない）\n{SITE}/hatsumi/today")
+                elif retry:  # 混み合いだけなら「失敗」にせず、次の見回りでもう一度送る
                     if a["hatsumi_fail"] == 1:
                         tell_mika(f"【叶ばぁ】{n}さんへの初視、LINEが混んでて送れなかった。次の見回りで自動でやり直すよ（手出し不要）")
                 else:
@@ -622,6 +653,10 @@ def today():  # /hatsumi/today（今日みかちゃんが手で送る初視の�
         a = it["auto"]
         if a["plan"]["hatsumi"][:10] > day:
             continue
+        if a["plan"]["d"] < now.strftime("%Y%m%d"):  # 送る日を過ぎた人は、今日から8日間に数え直す（本文の期限・リンク・⑥〜⑨の予定）
+            if _redate(a, now.date()):
+                a["plan"]["hatsumi"] = _s(now)
+                store.put(it)
         text = _hand_text(it, a)
         limit = datetime.strptime(a["plan"]["d"], "%Y%m%d") + timedelta(days=8)
         late = "<b class=warn>送る日を過ぎているよ</b> " if a["plan"]["hatsumi"][:10] < day else ""
@@ -754,6 +789,9 @@ def act():  # POST /hatsumi/act
         a["hatsumi_fail"] = 0
         a["state"] = "ready"
         a.pop("stop", None)
+        if not _redate(a, _now().date()):  # 日付を今日からに直す。型どおりでなく直せなかった本文は保留にして見てもらう
+            a["state"] = "hold"
+            a["hits"] = ["本文の期限の日付を直せなかった（「書き直す」を押すか、手で直して）"]
         a["plan"]["hatsumi"] = _s(_now() - timedelta(minutes=1))
         note(f"{it['id'][-6:]} の初視を送り直しに戻した")
     elif op == "ready":
